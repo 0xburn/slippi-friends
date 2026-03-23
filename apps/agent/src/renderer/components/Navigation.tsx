@@ -14,7 +14,7 @@ export function Navigation() {
         {/* Spacer for macOS traffic lights */}
         <div className="h-[52px] shrink-0 drag" />
         <div className="flex items-center gap-2.5 px-5 pb-4 no-drag">
-          <img src="/logo.jpg" alt="L7" className="w-8 h-8 rounded-lg" />
+          <img src="/logo.png" alt="L7" className="w-8 h-8" />
           <span className="font-display font-bold text-base tracking-tight">
             Slippi <span className="text-[#21BA45]">Friends</span>
           </span>

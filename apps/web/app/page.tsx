@@ -37,7 +37,7 @@ export default async function HomePage() {
         <div className="mx-auto max-w-4xl text-center">
           <div className="mx-auto mb-8 flex justify-center">
             <Image
-              src="/logo.jpg"
+              src="/logo.png"
               alt="Slippi Friends"
               width={120}
               height={120}
