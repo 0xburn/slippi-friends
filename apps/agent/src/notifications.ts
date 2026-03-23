@@ -23,7 +23,7 @@ export function showOpponentNotification(
     if (!Notification.isSupported()) return;
     const charName = characterLabel(characterId);
     const n = new Notification({
-      title: 'Friendlies',
+      title: 'friendlies',
       body: `${opponentName || opponentCode} (${opponentCode}) — ${charName}`,
     });
     n.show();
@@ -40,7 +40,7 @@ export function showFriendOnlineNotification(
     if (!Notification.isSupported()) return;
     const label = newStatus === 'in-game' ? 'is now in game' : 'is now online';
     const n = new Notification({
-      title: 'Friendlies',
+      title: 'friendlies',
       body: `${connectCode} ${label}`,
     });
     n.show();
@@ -56,7 +56,7 @@ export function showFriendRequestNotification(
   try {
     if (!Notification.isSupported()) return;
     const n = new Notification({
-      title: 'Friendlies',
+      title: 'friendlies',
       body: `${fromCode} sent you a friend request`,
     });
     if (onClick) n.on('click', onClick);
@@ -73,7 +73,7 @@ export function showPlayInviteNotification(
   try {
     if (!Notification.isSupported()) return;
     const n = new Notification({
-      title: 'Friendlies',
+      title: 'friendlies',
       body: `${fromCode} wants to play!`,
     });
     if (onClick) n.on('click', onClick);

@@ -94,7 +94,7 @@ export function Settings() {
 
         <ToggleRow
           label="Launch at Login"
-          description="Start Friendlies automatically when you log in"
+          description="Start friendlies automatically when you log in"
           checked={settings.autoLaunch}
           onChange={() => toggle('autoLaunch')}
         />
@@ -151,7 +151,7 @@ export function Settings() {
       </div>
 
       <p className="text-center text-xs text-gray-600">
-        Friendlies v0.1.34
+      friendlies v0.1.34
       </p>
     </div>
   );

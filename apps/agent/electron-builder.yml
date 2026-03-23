@@ -1,5 +1,5 @@
 appId: com.friendlies.agent
-productName: Friendlies
+productName: friendlies
 copyright: Copyright © 2026
 
 files:
@@ -28,10 +28,10 @@ nsis:
   oneClick: true
   perMachine: false
   allowToChangeInstallationDirectory: false
-  artifactName: "Friendlies-Setup-${version}.${ext}"
+  artifactName: "friendlies-Setup-${version}.${ext}"
 
 portable:
-  artifactName: "Friendlies-${version}-portable.exe"
+  artifactName: "friendlies-${version}-portable.exe"
 
 linux:
   target:

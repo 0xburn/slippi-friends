@@ -2,9 +2,9 @@
   "name": "@slippi-friends/agent",
   "version": "0.1.34",
   "private": true,
-  "description": "Friendlies - the Melee companion app for tracking friends and opponents",
-  "author": "Friendlies",
-  "repository": "https://github.com/0xburn/slippi-friends",
+  "description": "friendlies - the Melee companion app for tracking friends and opponents",
+  "author": "Lucky 7s Melee LLC",
+  "repository": "https://github.com/0xburn/friendlies",
   "main": "dist/main.js",
   "scripts": {
     "dev": "concurrently -n tsc,vite,electron \"tsc -w --preserveWatchOutput\" \"vite\" \"wait-on http://localhost:5173 && NODE_ENV=development electron .\"",

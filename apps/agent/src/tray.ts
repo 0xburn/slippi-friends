@@ -33,7 +33,7 @@ function buildMenu(): Menu {
   return Menu.buildFromTemplate([
     { label: `Status: ${statusLabel}`, enabled: false },
     { type: 'separator' },
-    { label: 'Show Friendlies', click: () => handlers.onShowWindow() },
+    { label: 'Show friendlies', click: () => handlers.onShowWindow() },
     { type: 'separator' },
     { label: 'Quit', click: () => handlers.onQuit() },
   ]);
@@ -44,7 +44,7 @@ export function createTray(getStatus: () => PresenceStatus, h: TrayHandlers): vo
   handlers = h;
   const img = loadIcon(getStatus());
   tray = new Tray(img);
-  tray.setToolTip('Friendlies');
+  tray.setToolTip('friendlies');
   tray.setContextMenu(buildMenu());
   tray.on('click', () => handlers.onShowWindow());
 }

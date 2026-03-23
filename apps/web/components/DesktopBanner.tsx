@@ -7,7 +7,7 @@ export function DesktopBanner() {
             Get the full experience on desktop
           </p>
           <p className="mt-1 text-sm text-gray-400">
-            The Friendlies desktop app gives you live presence,
+            The friendlies desktop app gives you live presence,
             auto-detected opponents, and faster access to everything.
           </p>
         </div>

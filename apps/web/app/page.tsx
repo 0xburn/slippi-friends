@@ -38,7 +38,7 @@ export default async function HomePage() {
           <div className="mb-6 flex justify-center">
             <Image
               src="/logo.png"
-              alt="Friendlies"
+              alt="friendlies"
               width={80}
               height={80}
               className="rounded-2xl"
@@ -47,7 +47,7 @@ export default async function HomePage() {
           </div>
 
           <h1 className="font-display text-4xl font-bold tracking-tight text-white sm:text-5xl">
-            Friendlies
+          friendlies
           </h1>
           <p className="mt-4 text-lg text-gray-400">
             A companion app for Melee netplay.
