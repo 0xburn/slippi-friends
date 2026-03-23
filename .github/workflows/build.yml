@@ -42,7 +42,7 @@ jobs:
         shell: bash
         run: |
           rm -f package-lock.json
-          npm install --no-package-lock
+          npm install --install-strategy=nested --no-package-lock
 
       - name: Create .env for agent
         shell: bash
