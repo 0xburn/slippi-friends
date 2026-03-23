@@ -289,7 +289,30 @@ export function registerIpcHandlers(win: BrowserWindow): void {
 
   ipcMain.handle('friends:remove', async (_e, friendshipId: string) => {
     try {
+      const user = await getCurrentUser();
+      if (!user) return { error: 'Not authenticated' };
+
+      const { data: row } = await supabase
+        .from('friends')
+        .select('user_id, friend_id, friend_connect_code')
+        .eq('id', friendshipId)
+        .single();
+
+      if (!row) return { error: 'Friendship not found' };
+
+      const myCode = (await supabase.from('profiles').select('connect_code').eq('id', user.id).single()).data?.connect_code || '';
+
+      // Delete both directions
       await supabase.from('friends').delete().eq('id', friendshipId);
+
+      if (row.friend_id) {
+        await supabase
+          .from('friends')
+          .delete()
+          .eq('user_id', row.friend_id)
+          .eq('friend_connect_code', myCode);
+      }
+
       return { ok: true };
     } catch (e: any) { return { error: e.message }; }
   });
