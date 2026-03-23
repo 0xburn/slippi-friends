@@ -20,24 +20,36 @@ export function getSlippiUserJsonPaths(): string[] {
   if (process.platform === 'win32') {
     const appData = path.join(home, 'AppData');
     candidates.push(
-      path.join(appData, 'Roaming', 'com.project-slippi.dolphin', 'Slippi', 'user.json'),
+      // Slippi Launcher 2.x+ (netplay dolphin user dir)
+      path.join(appData, 'Roaming', 'Slippi Launcher', 'netplay', 'User', 'Slippi', 'user.json'),
+      path.join(appData, 'Roaming', 'Slippi Launcher', 'netplay', 'Slippi', 'user.json'),
       path.join(appData, 'Roaming', 'Slippi Launcher', 'netplay', 'user.json'),
+      // Standalone Slippi Dolphin
+      path.join(appData, 'Roaming', 'com.project-slippi.dolphin', 'Slippi', 'user.json'),
+      path.join(appData, 'Roaming', 'Slippi Dolphin', 'User', 'Slippi', 'user.json'),
+      // Older locations
       path.join(appData, 'Local', 'com.project-slippi.dolphin', 'Slippi', 'user.json'),
       path.join(appData, 'Local', 'Programs', 'slippi-launcher', 'resources', 'app.asar.unpacked', 'dolphin', 'user.json'),
       path.join(appData, 'Roaming', 'Slippi Desktop App', 'dolphin', 'user.json'),
+      // Documents fallback
+      path.join(home, 'Documents', 'Slippi', 'user.json'),
     );
   } else if (process.platform === 'darwin') {
     const appSupport = path.join(home, 'Library', 'Application Support');
     candidates.push(
-      path.join(appSupport, 'com.project-slippi.dolphin', 'Slippi', 'user.json'),
+      path.join(appSupport, 'Slippi Launcher', 'netplay', 'User', 'Slippi', 'user.json'),
+      path.join(appSupport, 'Slippi Launcher', 'netplay', 'Slippi', 'user.json'),
       path.join(appSupport, 'Slippi Launcher', 'netplay', 'user.json'),
+      path.join(appSupport, 'com.project-slippi.dolphin', 'Slippi', 'user.json'),
       path.join(appSupport, 'Slippi Desktop App', 'dolphin', 'user.json'),
     );
   } else {
     candidates.push(
+      path.join(home, '.config', 'Slippi Launcher', 'netplay', 'User', 'Slippi', 'user.json'),
+      path.join(home, '.config', 'Slippi Launcher', 'netplay', 'Slippi', 'user.json'),
+      path.join(home, '.config', 'Slippi Launcher', 'netplay', 'user.json'),
       path.join(home, '.config', 'com.project-slippi.dolphin', 'Slippi', 'user.json'),
       path.join(home, '.config', 'SlippiOnline', 'user.json'),
-      path.join(home, '.config', 'Slippi Launcher', 'netplay', 'user.json'),
     );
   }
 
@@ -59,6 +71,8 @@ function scanForSlippiUserJson(): string[] {
     searchDirs = [
       path.join(home, 'AppData', 'Roaming'),
       path.join(home, 'AppData', 'Local'),
+      path.join(home, 'AppData', 'Local', 'Programs'),
+      path.join(home, 'Documents'),
     ];
   } else if (process.platform === 'darwin') {
     searchDirs = [path.join(home, 'Library', 'Application Support')];
@@ -70,8 +84,9 @@ function scanForSlippiUserJson(): string[] {
     try {
       if (!fs.existsSync(dir)) continue;
       for (const entry of fs.readdirSync(dir)) {
-        if (!entry.toLowerCase().includes('slippi') && !entry.toLowerCase().includes('dolphin')) continue;
-        const candidate = findUserJsonInDir(path.join(dir, entry), 3);
+        const lower = entry.toLowerCase();
+        if (!lower.includes('slippi') && !lower.includes('dolphin') && !lower.includes('melee')) continue;
+        const candidate = findUserJsonInDir(path.join(dir, entry), 5);
         if (candidate) found.push(candidate);
       }
     } catch { /* ignore permission errors */ }

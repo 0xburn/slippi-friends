@@ -21,16 +21,23 @@ function normalizeConnectCode(code: string): string {
 
 export function findUserJson(): string | null {
   try {
-    for (const p of getSlippiUserJsonPaths()) {
-      if (fs.existsSync(p)) {
+    const paths = getSlippiUserJsonPaths();
+    console.log(`[identity] scanning ${paths.length} candidate paths...`);
+    for (const p of paths) {
+      const exists = fs.existsSync(p);
+      if (exists) {
+        console.log(`[identity] FOUND user.json at: ${p}`);
         identityStore.set(KEY_USER_JSON_PATH, p);
         return p;
       }
     }
+    console.log('[identity] no user.json found in candidates, checking cache...');
     const cached = identityStore.get(KEY_USER_JSON_PATH) as string | undefined;
     if (cached && fs.existsSync(cached)) {
+      console.log(`[identity] using cached path: ${cached}`);
       return cached;
     }
+    console.log('[identity] no user.json found anywhere');
   } catch (e) {
     console.error('findUserJson failed', e);
   }
