@@ -314,7 +314,15 @@ app.whenReady().then(async () => {
     if (!isDev) {
       initAutoUpdater(mainWindow);
       checkForUpdates();
-      setInterval(checkForUpdates, 60 * 60 * 1000);
+      setInterval(checkForUpdates, 10 * 60 * 1000);
+      let lastFocusCheck = 0;
+      mainWindow.on('focus', () => {
+        const now = Date.now();
+        if (now - lastFocusCheck > 5 * 60 * 1000) {
+          lastFocusCheck = now;
+          checkForUpdates();
+        }
+      });
     }
 
     createTray(getCurrentStatus, {
