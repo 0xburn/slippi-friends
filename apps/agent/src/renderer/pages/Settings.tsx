@@ -13,6 +13,7 @@ export function Settings() {
     showNotifications: true,
   });
   const [saved, setSaved] = useState(false);
+  const [updateMsg, setUpdateMsg] = useState<string | null>(null);
 
   useEffect(() => {
     window.api.getSettings().then((s) => {
@@ -21,6 +22,11 @@ export function Settings() {
         autoLaunch: s.autoLaunch || false,
         showNotifications: s.showNotifications !== false,
       });
+    });
+    return window.api.onUpdateStatus((s: any) => {
+      if (s.state === 'not-available') setUpdateMsg('Up to date');
+      else if (s.state === 'available') setUpdateMsg(null);
+      else if (s.state === 'error') setUpdateMsg(null);
     });
   }, []);
 
@@ -102,17 +108,22 @@ export function Settings() {
           >
             Log Out
           </button>
-          <button
-            onClick={() => window.api.checkForUpdates()}
-            className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-[#222] hover:text-white"
-          >
-            Check for Updates
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => { setUpdateMsg(null); window.api.checkForUpdates(); }}
+              className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-[#222] hover:text-white"
+            >
+              Check for Updates
+            </button>
+            {updateMsg && (
+              <span className="text-xs font-medium text-[#21BA45]">{updateMsg}</span>
+            )}
+          </div>
         </div>
       </div>
 
       <p className="text-center text-xs text-gray-600">
-        Slippi Friends v0.1.25
+        Slippi Friends v0.1.26
       </p>
     </div>
   );
