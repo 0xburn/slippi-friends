@@ -7,6 +7,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 
+const IMG_PREFIX = process.env.NEXT_PUBLIC_ASSET_PREFIX || '';
+
 export function Navigation() {
   const pathname = usePathname();
   const router = useRouter();
@@ -48,7 +50,7 @@ export function Navigation() {
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2">
-              <Image src="/logo.png" alt="" width={32} height={32} className="rounded-lg" />
+              <Image src={`${IMG_PREFIX}/logo.png`} alt="" width={32} height={32} className="rounded-lg" />
               <span className="font-display font-bold text-lg tracking-tight text-white hidden sm:block">
                 friendlies
               </span>

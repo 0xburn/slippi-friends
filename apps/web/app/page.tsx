@@ -2,6 +2,7 @@ import Image from 'next/image';
 import { DownloadButtons } from '@/components/DownloadButtons';
 
 const REPO = '0xburn/friendlies';
+const IMG_PREFIX = process.env.NEXT_PUBLIC_ASSET_PREFIX || '';
 
 async function getLatestRelease() {
   try {
@@ -37,7 +38,7 @@ export default async function HomePage() {
         <div className="mx-auto max-w-4xl text-center">
           <div className="mb-6 flex justify-center">
             <Image
-              src="/logo.png"
+              src={`${IMG_PREFIX}/logo.png`}
               alt="friendlies"
               width={80}
               height={80}
@@ -65,7 +66,7 @@ export default async function HomePage() {
       <section className="mx-auto max-w-5xl px-4">
         <div className="rounded-xl border border-[#2a2a2a] overflow-hidden shadow-2xl shadow-black/50">
           <Image
-            src="/appexample.png"
+            src={`${IMG_PREFIX}/appexample.png`}
             alt="Friendlies app"
             width={1200}
             height={750}

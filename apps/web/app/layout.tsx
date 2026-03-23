@@ -4,12 +4,14 @@ import './globals.css';
 import { Navigation } from '@/components/Navigation';
 import { PresenceProvider } from '@/components/PresenceProvider';
 
+const prefix = process.env.NEXT_PUBLIC_ASSET_PREFIX || '';
+
 export const metadata: Metadata = {
   title: 'friendlies',
   description: 'enable friends lists for Melee',
   icons: {
-    icon: '/logo.png',
-    apple: '/logo.png',
+    icon: `${prefix}/logo.png`,
+    apple: `${prefix}/logo.png`,
   },
 };
 
