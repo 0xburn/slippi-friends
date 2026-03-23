@@ -327,4 +327,9 @@ app.whenReady().then(async () => {
   } catch (e) { console.error('app.whenReady', e); }
 });
 
-app.on('window-all-closed', () => {});
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    (app as any).isQuitting = true;
+    app.quit();
+  }
+});
