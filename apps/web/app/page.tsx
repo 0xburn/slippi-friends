@@ -33,8 +33,8 @@ export default async function HomePage() {
   return (
     <div className="relative min-h-[calc(100vh-8rem)]">
       {/* Hero */}
-      <section className="pt-16 pb-12 sm:pt-24 sm:pb-16">
-        <div className="mx-auto max-w-2xl text-center">
+      <section className="pt-10 pb-10 sm:pt-16 sm:pb-12">
+        <div className="mx-auto max-w-4xl text-center">
           <div className="mb-6 flex justify-center">
             <Image
               src="/logo.png"
@@ -62,7 +62,7 @@ export default async function HomePage() {
       </section>
 
       {/* App screenshot */}
-      <section className="mx-auto max-w-3xl px-4">
+      <section className="mx-auto max-w-5xl px-4">
         <div className="rounded-xl border border-[#2a2a2a] overflow-hidden shadow-2xl shadow-black/50">
           <Image
             src="/appexample.png"
@@ -76,7 +76,7 @@ export default async function HomePage() {
       </section>
 
       {/* Features + setup steps */}
-      <section className="mx-auto mt-20 max-w-3xl grid gap-px sm:grid-cols-3 rounded-xl border border-[#2a2a2a] overflow-hidden">
+      <section className="mx-auto mt-14 max-w-5xl grid gap-px sm:grid-cols-3 rounded-xl border border-[#2a2a2a] overflow-hidden">
         <div className="bg-[#111] p-6">
           <h2 className="text-sm font-semibold text-white">Live presence</h2>
           <p className="mt-2 text-sm leading-relaxed text-gray-500">
@@ -111,7 +111,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <footer className="mt-20 pb-8 text-center text-xs text-gray-600">
+      <footer className="mt-14 pb-8 text-center text-xs text-gray-600">
         Open source on{' '}
         <a
           href={`https://github.com/${REPO}`}
