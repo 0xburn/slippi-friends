@@ -17,15 +17,32 @@ interface Match {
   did_win?: boolean | null;
 }
 
+interface CharCount {
+  characterId: number;
+  count: number;
+}
+
 interface Session {
   opponentCode: string;
   opponentName?: string;
   wins: number;
   losses: number;
-  opponentCharacters: number[];
-  userCharacters: number[];
+  opponentCharacters: CharCount[];
+  userCharacters: CharCount[];
   latestPlayedAt: string;
   games: Match[];
+}
+
+const MAX_CHARS_SHOWN = 2;
+
+function bumpChar(arr: CharCount[], id: number): void {
+  const entry = arr.find((c) => c.characterId === id);
+  if (entry) entry.count++;
+  else arr.push({ characterId: id, count: 1 });
+}
+
+function topChars(arr: CharCount[]): CharCount[] {
+  return [...arr].sort((a, b) => b.count - a.count).slice(0, MAX_CHARS_SHOWN);
 }
 
 function groupIntoSessions(matches: Match[]): Session[] {
@@ -53,20 +70,16 @@ function groupIntoSessions(matches: Match[]): Session[] {
       current.games.push(m);
       if (m.did_win === true) current.wins++;
       else if (m.did_win === false) current.losses++;
-      if (m.opponent_character_id != null && !current.opponentCharacters.includes(m.opponent_character_id)) {
-        current.opponentCharacters.push(m.opponent_character_id);
-      }
-      if (m.user_character_id != null && !current.userCharacters.includes(m.user_character_id)) {
-        current.userCharacters.push(m.user_character_id);
-      }
+      if (m.opponent_character_id != null) bumpChar(current.opponentCharacters, m.opponent_character_id);
+      if (m.user_character_id != null) bumpChar(current.userCharacters, m.user_character_id);
     } else {
       current = {
         opponentCode: m.opponent_connect_code,
         opponentName: m.opponent_display_name,
         wins: m.did_win === true ? 1 : 0,
         losses: m.did_win === false ? 1 : 0,
-        opponentCharacters: m.opponent_character_id != null ? [m.opponent_character_id] : [],
-        userCharacters: m.user_character_id != null ? [m.user_character_id] : [],
+        opponentCharacters: m.opponent_character_id != null ? [{ characterId: m.opponent_character_id, count: 1 }] : [],
+        userCharacters: m.user_character_id != null ? [{ characterId: m.user_character_id, count: 1 }] : [],
         latestPlayedAt: m.played_at,
         games: [m],
       };
@@ -116,12 +129,12 @@ function SessionRow({
         className="flex items-center gap-3 p-3 cursor-pointer"
         onClick={() => setExpanded((prev) => !prev)}
       >
-        {/* Character matchup: user vs opponent */}
+        {/* Character matchup: top 2 user chars vs top 2 opponent chars */}
         <div className="flex items-center gap-1 shrink-0">
           <div className="flex items-center -space-x-1">
             {session.userCharacters.length > 0
-              ? session.userCharacters.map((cId) => (
-                  <CharacterIcon key={`u-${cId}`} characterId={cId} size="sm" />
+              ? topChars(session.userCharacters).map((c) => (
+                  <CharacterIcon key={`u-${c.characterId}`} characterId={c.characterId} size="sm" />
                 ))
               : (
                 <div className="w-6 h-6 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-[10px] text-gray-600 font-mono">
@@ -132,8 +145,8 @@ function SessionRow({
           <span className="text-[10px] text-gray-600 font-bold">vs</span>
           <div className="flex items-center -space-x-1">
             {session.opponentCharacters.length > 0
-              ? session.opponentCharacters.map((cId) => (
-                  <CharacterIcon key={`o-${cId}`} characterId={cId} size="sm" />
+              ? topChars(session.opponentCharacters).map((c) => (
+                  <CharacterIcon key={`o-${c.characterId}`} characterId={c.characterId} size="sm" />
                 ))
               : (
                 <div className="w-6 h-6 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-[10px] text-gray-600 font-mono">
