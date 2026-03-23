@@ -176,10 +176,9 @@ async function hasRecentReplayActivity(dir: string): Promise<boolean> {
 function resolvePresenceStatus(
   launcherRunning: boolean,
   dolphinRunning: boolean,
-  replayHot: boolean,
 ): PresenceStatus {
   if (!launcherRunning && !dolphinRunning) return 'offline';
-  if (dolphinRunning && replayHot) return 'in-game';
+  if (dolphinRunning) return 'in-game';
   return 'online';
 }
 
@@ -351,8 +350,7 @@ export async function startPresenceLoop(
       try {
         const launcherRunning = await isProcessRunning(SLIPPI_LAUNCHER_PROCESS_NAMES);
         const dolphinRunning = await isProcessRunning(DOLPHIN_PROCESS_NAMES);
-        const replayHot = dolphinRunning ? await hasRecentReplayActivity(replayDirForPoll) : false;
-        const next = resolvePresenceStatus(launcherRunning, dolphinRunning, replayHot);
+        const next = resolvePresenceStatus(launcherRunning, dolphinRunning);
         currentStatus = next;
         emitLocalStatus();
         await pushPresence(
