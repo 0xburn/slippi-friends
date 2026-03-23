@@ -198,17 +198,36 @@ async function pushPresence(
   try {
     const opponent = status === 'in-game' ? getRecentOpponent() : null;
 
-    await supabase.from('presence_log').upsert(
-      {
-        user_id: userId,
-        status,
-        current_character: lastCharacterId,
-        opponent_code: opponent?.code ?? null,
-        playing_since: opponent?.since ?? null,
-        updated_at: new Date().toISOString(),
-      },
+    const row: Record<string, any> = {
+      user_id: userId,
+      status,
+      current_character: lastCharacterId,
+      updated_at: new Date().toISOString(),
+    };
+    if (opponent) {
+      row.opponent_code = opponent.code;
+      row.playing_since = opponent.since;
+    }
+
+    const { error } = await supabase.from('presence_log').upsert(
+      row,
       { onConflict: 'user_id' },
     );
+    if (error) {
+      console.error('[presence] DB upsert failed:', error.message);
+      if (error.message.includes('opponent_code') || error.message.includes('playing_since')) {
+        const { error: retryErr } = await supabase.from('presence_log').upsert(
+          {
+            user_id: userId,
+            status,
+            current_character: lastCharacterId,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id' },
+        );
+        if (retryErr) console.error('[presence] DB upsert retry failed:', retryErr.message);
+      }
+    }
 
     if (status === 'offline') {
       if (presenceChannel && subscribed) {
