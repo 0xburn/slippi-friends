@@ -1,0 +1,164 @@
+/// <reference lib="dom" />
+
+export * from "./characters";
+export * from "./ranks";
+export * from "./stages";
+
+export const ACCOUNT_MANAGEMENT_PAGE_QUERY = `
+fragment profileFields on NetplayProfile {
+  id
+  ratingOrdinal
+  ratingUpdateCount
+  wins
+  losses
+  dailyGlobalPlacement
+  dailyRegionalPlacement
+  continent
+  characters {
+    id
+    character
+    gameCount
+    __typename
+  }
+  __typename
+}
+
+fragment userProfilePage on User {
+  fbUid
+  displayName
+  connectCode {
+    code
+    __typename
+  }
+  status
+  activeSubscription {
+    level
+    hasGiftSub
+    __typename
+  }
+  rankedNetplayProfile {
+    ...profileFields
+    __typename
+  }
+  netplayProfiles {
+    ...profileFields
+    season {
+      id
+      startedAt
+      endedAt
+      name
+      status
+      __typename
+    }
+    __typename
+  }
+  __typename
+}
+
+query AccountManagementPageQuery($cc: String!, $uid: String!) {
+  getUser(fbUid: $uid) {
+    ...userProfilePage
+    __typename
+  }
+  getConnectCode(code: $cc) {
+    user {
+      ...userProfilePage
+      __typename
+    }
+    __typename
+  }
+}
+`.trim();
+
+export interface SlippiPlayerData {
+  fbUid: string;
+  displayName: string;
+  connectCode: string;
+  rankedRating: number | null;
+  rankedWins: number;
+  rankedLosses: number;
+  globalPlacement: number | null;
+  continent: string | null;
+  characters: Array<{ character: number; gameCount: number }>;
+  subscriptionLevel: string | null;
+}
+
+interface SlippiUser {
+  fbUid?: string;
+  displayName?: string;
+  connectCode?: { code?: string | null } | null;
+  activeSubscription?: { level?: string | null } | null;
+  rankedNetplayProfile?: {
+    ratingOrdinal?: number | null;
+    wins?: number | null;
+    losses?: number | null;
+    dailyGlobalPlacement?: number | null;
+    continent?: string | null;
+    characters?: Array<{
+      character?: number | null;
+      gameCount?: number | null;
+    }> | null;
+  } | null;
+}
+
+export async function fetchSlippiPlayer(
+  connectCode: string,
+): Promise<SlippiPlayerData | null> {
+  try {
+    const response = await fetch(
+      "https://gql-gateway-dot-slippi.uc.r.appspot.com/graphql",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Origin: "https://slippi.gg",
+          Referer: "https://slippi.gg/",
+        },
+        body: JSON.stringify({
+          operationName: "AccountManagementPageQuery",
+          variables: { cc: connectCode, uid: connectCode },
+          query: ACCOUNT_MANAGEMENT_PAGE_QUERY,
+        }),
+      },
+    );
+
+    const data = (await response.json()) as {
+      data?: {
+        getConnectCode?: { user?: SlippiUser | null } | null;
+        getUser?: SlippiUser | null;
+      };
+    };
+
+    const user =
+      data?.data?.getConnectCode?.user ?? data?.data?.getUser ?? null;
+    if (!user?.fbUid) {
+      return null;
+    }
+
+    const ranked = user.rankedNetplayProfile;
+    const code = user.connectCode?.code ?? connectCode;
+
+    return {
+      fbUid: user.fbUid,
+      displayName: user.displayName ?? "",
+      connectCode: code,
+      rankedRating: ranked?.ratingOrdinal ?? null,
+      rankedWins: ranked?.wins ?? 0,
+      rankedLosses: ranked?.losses ?? 0,
+      globalPlacement: ranked?.dailyGlobalPlacement ?? null,
+      continent: ranked?.continent ?? null,
+      characters: (ranked?.characters ?? [])
+        .filter(
+          (c): c is { character: number; gameCount: number } =>
+            typeof c?.character === "number" && typeof c?.gameCount === "number",
+        )
+        .map((c) => ({
+          character: c.character,
+          gameCount: c.gameCount,
+        })),
+      subscriptionLevel: user.activeSubscription?.level ?? null,
+    };
+  } catch {
+    return null;
+  }
+}

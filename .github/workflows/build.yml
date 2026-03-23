@@ -1,0 +1,56 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            platform: mac
+          - os: windows-latest
+            platform: win
+          - os: ubuntu-latest
+            platform: linux
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create .env for agent
+        working-directory: apps/agent
+        run: |
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > ../../.env
+          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> ../../.env
+
+      - name: Build agent (${{ matrix.platform }})
+        working-directory: apps/agent
+        run: |
+          npx tsc
+          npx vite build
+          npx electron-builder --${{ matrix.platform }} --publish never
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: slippi-friends-${{ matrix.platform }}
+          path: |
+            apps/agent/release/*.dmg
+            apps/agent/release/*.zip
+            apps/agent/release/*.exe
+            apps/agent/release/*.AppImage
+          if-no-files-found: ignore

@@ -1,0 +1,48 @@
+appId: com.slippifriends.agent
+productName: Slippi Friends
+copyright: Copyright © 2026
+
+files:
+  - "dist/**/*"
+  - "assets/**/*"
+  - "!dist/renderer/src"
+
+extraMetadata:
+  main: dist/main.js
+
+mac:
+  category: public.app-category.social-networking
+  target:
+    - dmg
+    - zip
+  hardenedRuntime: true
+  icon: assets/icon.png
+
+win:
+  target:
+    - nsis
+    - portable
+  icon: assets/icon.png
+
+nsis:
+  oneClick: true
+  perMachine: false
+  allowToChangeInstallationDirectory: false
+
+portable:
+  artifactName: "SlippiFriends-${version}-portable.exe"
+
+linux:
+  target:
+    - AppImage
+  category: Network
+  icon: assets/icon.png
+
+protocols:
+  - name: slippi-friends
+    role: Viewer
+    schemes:
+      - slippi-friends
+
+directories:
+  output: release

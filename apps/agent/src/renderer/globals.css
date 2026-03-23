@@ -1,0 +1,42 @@
+@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --slippi-green: #21BA45;
+  --bg-primary: #0a0a0a;
+  --bg-card: #141414;
+  --border-color: #2a2a2a;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: #ffffff;
+  font-family: 'DM Sans', sans-serif;
+  overflow: hidden;
+}
+
+@layer base {
+  * { border-color: var(--border-color); }
+}
+
+@layer utilities {
+  .text-gradient-green {
+    background: linear-gradient(135deg, #21BA45, #17cf97);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .glow-green { box-shadow: 0 0 20px rgba(33, 186, 69, 0.15); }
+  .glow-green-hover:hover { box-shadow: 0 0 30px rgba(33, 186, 69, 0.25); }
+  .drag { -webkit-app-region: drag; }
+  .no-drag { -webkit-app-region: no-drag; }
+}
+
+::selection { background-color: rgba(33, 186, 69, 0.3); color: white; }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #444; }

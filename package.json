@@ -1,0 +1,25 @@
+{
+  "name": "slippi-friends",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev -w apps/web",
+    "dev:agent": "npm run dev -w apps/agent",
+    "build:web": "npm run build -w apps/web",
+    "build:agent": "npm run build -w apps/agent",
+    "build:api": "npm run build -w packages/slippi-api",
+    "build": "npm run build:api && npm run build:web && npm run build:agent",
+    "lint": "npm run lint -w apps/web"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=9.0.0"
+  },
+  "dependencies": {
+    "pg": "^8.20.0"
+  }
+}

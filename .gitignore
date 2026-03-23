@@ -1,0 +1,24 @@
+node_modules/
+dist/
+.next/
+out/
+.env
+.env.local
+.env.*.local
+*.tsbuildinfo
+.turbo/
+.vercel/
+
+# Electron build artifacts
+apps/agent/release/
+*.dmg
+*.exe
+*.AppImage
+*.snap
+*.zip
+*.blockmap
+
+# IDE / tool
+.claude/
+.cursor/
+skills-lock.json
