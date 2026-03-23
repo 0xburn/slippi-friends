@@ -63,7 +63,6 @@ export function Friends() {
   const [myOppCharId, setMyOppCharId] = useState<number | null>(null);
   const [myPlayingSince, setMyPlayingSince] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [updateAvailable, setUpdateAvailable] = useState<string | null>(null);
 
   useEffect(() => {
     window.api.getIdentity().then((id) => {
@@ -107,16 +106,12 @@ export function Friends() {
       setMyCharacterId(info.characterId ?? null);
     });
 
-    const unsubUpdate = window.api.onUpdateStatus((s: any) => {
-      if (s.state === 'available' || s.state === 'downloaded') setUpdateAvailable(s.version);
-    });
-
     const dbPoll = setInterval(() => {
       pollFriendStatuses();
       loadFriends();
       loadIncoming();
     }, 10_000);
-    return () => { unsub(); unsubStatus(); unsubUpdate(); clearInterval(dbPoll); };
+    return () => { unsub(); unsubStatus(); clearInterval(dbPoll); };
   }, []);
 
   async function pollFriendStatuses() {
@@ -273,21 +268,6 @@ export function Friends() {
               {copied ? '✓' : 'Copy'}
             </button>
           </div>
-        </div>
-      )}
-
-      {updateAvailable && (
-        <div className="rounded-xl border border-[#5865F2]/30 bg-[#5865F2]/5 p-3 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-white">v{updateAvailable} available</p>
-            <p className="text-[10px] text-gray-400">A new version is ready</p>
-          </div>
-          <button
-            onClick={() => window.api.downloadUpdate()}
-            className="shrink-0 rounded-lg bg-[#5865F2] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#4752C4] transition-colors"
-          >
-            Update
-          </button>
         </div>
       )}
 
