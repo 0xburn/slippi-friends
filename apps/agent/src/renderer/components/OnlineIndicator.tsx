@@ -1,7 +1,7 @@
 import { getCharacterShortName } from '../lib/characters';
 
 interface OnlineIndicatorProps {
-  status: 'online' | 'in-game' | 'offline';
+  status: 'online' | 'in-game' | 'offline' | 'waiting';
   size?: 'sm' | 'md' | 'lg';
   opponentCode?: string | null;
   opponentCharacterId?: number | null;
@@ -47,9 +47,13 @@ export function OnlineIndicator({
       ) : (
         <span
           className={`inline-block rounded-full ${dotSizes[size]} ${
-            status === 'online' ? 'bg-[#21BA45] animate-pulse' : 'bg-gray-500'
+            status === 'online'
+              ? 'bg-[#21BA45] animate-pulse'
+              : status === 'waiting'
+                ? 'bg-amber-400'
+                : 'bg-gray-500'
           }`}
-          title={status}
+          title={status === 'waiting' ? 'On app' : status}
         />
       )}
       {showOpponent && (

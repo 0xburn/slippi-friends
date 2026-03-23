@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 
 const links = [
@@ -6,7 +7,20 @@ const links = [
   { to: '/settings', label: 'Settings', icon: '⚙' },
 ];
 
+const SHARE_BLURB =
+  'Check out Slippi Friends — track opponents, see who\'s online, and manage your Melee friend list.\nhttps://slippi-friends-web.vercel.app/';
+
 export function Navigation() {
+  const [copied, setCopied] = useState(false);
+
+  async function handleShare() {
+    try {
+      await window.api.copyToClipboard(SHARE_BLURB);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* ignore */ }
+  }
+
   return (
     <div className="flex h-screen overflow-hidden">
       <aside className="w-[220px] shrink-0 flex flex-col border-r border-[#2a2a2a] bg-[#0d0d0d]">
@@ -37,7 +51,16 @@ export function Navigation() {
             </NavLink>
           ))}
         </nav>
-        <div className="px-5 py-3 text-[10px] text-gray-600">v0.1.31</div>
+        <div className="px-4 pb-2">
+          <button
+            onClick={handleShare}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors text-[#21BA45]/70 hover:text-[#21BA45] hover:bg-[#21BA45]/10"
+          >
+            <span className="text-sm">🔗</span>
+            {copied ? 'Copied!' : 'Share with a Friend!'}
+          </button>
+        </div>
+        <div className="px-5 py-2 text-[10px] text-gray-600">v0.1.32</div>
       </aside>
       <main className="flex-1 overflow-y-auto">
         {/* Top drag region for the content area */}

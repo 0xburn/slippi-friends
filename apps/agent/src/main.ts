@@ -21,6 +21,7 @@ import { setIdentityMismatchHandler, startWatcher, stopWatcher } from './watcher
 
 let mainWindow: BrowserWindow | null = null;
 let friendPollTimer: ReturnType<typeof setInterval> | null = null;
+let serviceStartedAt: string | null = null;
 const previousFriendStatuses = new Map<string, string>();
 const knownIncomingRequestIds = new Set<string>();
 const knownPlayInviteIds = new Set<string>();
@@ -95,6 +96,7 @@ function createMainWindow(): BrowserWindow {
 
 async function stopAgentServices(): Promise<void> {
   if (friendPollTimer) { clearInterval(friendPollTimer); friendPollTimer = null; }
+  serviceStartedAt = null;
   previousFriendStatuses.clear();
   knownIncomingRequestIds.clear();
   knownPlayInviteIds.clear();
@@ -137,7 +139,7 @@ async function pollFriendOnlineStatuses(userId: string): Promise<void> {
       const age = now - new Date(row.updated_at).getTime();
       const newStatus = age > staleMs ? 'offline' : row.status;
       const prev = previousFriendStatuses.get(code);
-      if (prev && prev === 'offline' && (newStatus === 'online' || newStatus === 'in-game')) {
+      if (prev && prev === 'offline' && newStatus !== 'offline') {
         showFriendOnlineNotification(code, newStatus);
       }
       previousFriendStatuses.set(code, newStatus);
@@ -206,6 +208,7 @@ async function pollPlayInvites(userId: string): Promise<void> {
       knownPlayInviteIds.add(inv.id);
       const fromCode = profileMap[inv.sender_id];
       if (!fromCode) continue;
+      if (serviceStartedAt && inv.created_at < serviceStartedAt) continue;
       showPlayInviteNotification(fromCode, () => {
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.show();
@@ -218,6 +221,7 @@ async function pollPlayInvites(userId: string): Promise<void> {
 
 async function startAgentServices(identity: SlippiIdentity, userId: string): Promise<void> {
   await stopAgentServices();
+  serviceStartedAt = new Date().toISOString();
   const st = getSettings();
 
   setIdentityMismatchHandler(async (mismatch) => {

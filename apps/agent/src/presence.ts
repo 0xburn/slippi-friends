@@ -14,7 +14,7 @@ const find = require('find-process') as (
   strict?: boolean,
 ) => Promise<Array<{ name: string; pid: number }>>;
 
-export type PresenceStatus = 'offline' | 'online' | 'in-game';
+export type PresenceStatus = 'offline' | 'waiting' | 'online' | 'in-game';
 
 export interface OnlineUser {
   connectCode: string;
@@ -149,9 +149,9 @@ function resolvePresenceStatus(
   launcherRunning: boolean,
   dolphinRunning: boolean,
 ): PresenceStatus {
-  if (!launcherRunning && !dolphinRunning) return 'offline';
   if (dolphinRunning) return 'in-game';
-  return 'online';
+  if (launcherRunning) return 'online';
+  return 'waiting';
 }
 
 function getRecentOpponent(): { code: string; since: string } | null {

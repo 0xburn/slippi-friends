@@ -13,7 +13,7 @@ interface Friend {
   avatarUrl?: string;
   rating: number | null;
   characterId: number | null;
-  status?: 'online' | 'in-game' | 'offline';
+  status?: 'online' | 'in-game' | 'offline' | 'waiting';
   onApp?: boolean;
   friendStatus?: 'pending' | 'accepted';
 }
@@ -57,7 +57,7 @@ export function Friends() {
   const [inviting, setInviting] = useState<string | null>(null);
   const [playInvites, setPlayInvites] = useState<{ id: string; connectCode: string; displayName?: string; created_at: string }[]>([]);
 
-  const [myStatus, setMyStatus] = useState<'online' | 'in-game' | 'offline'>('offline');
+  const [myStatus, setMyStatus] = useState<'online' | 'in-game' | 'offline' | 'waiting'>('offline');
   const [myIdentity, setMyIdentity] = useState<{ connectCode: string; displayName: string } | null>(null);
   const [myUser, setMyUser] = useState<{ avatar_url?: string; discord_name?: string } | null>(null);
   const [myProfile, setMyProfile] = useState<{ rating_ordinal?: number; wins?: number; losses?: number } | null>(null);
@@ -81,7 +81,7 @@ export function Friends() {
       if (p) setMyProfile({ rating_ordinal: p.rating_ordinal, wins: p.wins, losses: p.losses });
     });
     window.api.getLocalStatus().then((s: any) => {
-      if (s) setMyStatus(s === 'in-game' ? 'in-game' : s === 'online' ? 'online' : 'offline');
+      if (s) setMyStatus(s === 'in-game' ? 'in-game' : s === 'online' ? 'online' : s === 'waiting' ? 'waiting' : 'offline');
     });
 
     Promise.all([loadFriends(), loadIncoming(), pollFriendStatuses(), loadPlayInvites()]).finally(() =>
@@ -189,7 +189,7 @@ export function Friends() {
         )
       : enriched;
 
-    const order: Record<string, number> = { 'in-game': 0, online: 1, offline: 2 };
+    const order: Record<string, number> = { 'in-game': 0, online: 1, waiting: 2, offline: 3 };
     const sorted = [...list].sort((a, b) => (order[a.status || 'offline'] ?? 2) - (order[b.status || 'offline'] ?? 2));
 
     return {

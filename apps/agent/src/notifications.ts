@@ -38,7 +38,7 @@ export function showFriendOnlineNotification(
 ): void {
   try {
     if (!Notification.isSupported()) return;
-    const label = newStatus === 'in-game' ? 'is now in game' : 'is now online';
+    const label = newStatus === 'in-game' ? 'is now in game' : newStatus === 'waiting' ? 'is on the app' : 'is now online';
     const n = new Notification({
       title: 'Slippi Friends',
       body: `${connectCode} ${label}`,
