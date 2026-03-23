@@ -85,6 +85,23 @@ serve(async (req) => {
       );
     }
 
+    const { data: banRecord } = await supabase
+      .from('blacklist')
+      .select('id')
+      .eq('user_id', authUser.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (banRecord) {
+      return new Response(
+        JSON.stringify({
+          verified: false,
+          error: 'This account has been suspended. Contact lucky7smelee@gmail.com to appeal.',
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // First-come-first-claimed: reject if another verified user owns this code
     const { data: existing } = await supabase
       .from('profiles')

@@ -315,6 +315,21 @@ export function registerIpcHandlers(win: BrowserWindow): void {
   });
   ipcMain.handle('setup:isComplete', () => isSetupComplete());
 
+  ipcMain.handle('auth:checkBlacklist', async () => {
+    try {
+      const user = await getCurrentUser();
+      if (!user) return null;
+      const { data } = await supabase
+        .from('blacklist')
+        .select('reason, claimed_code, actual_code, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    } catch { return null; }
+  });
+
   ipcMain.handle('slippi:lookup', async (_e, connectCode: string) => {
     try {
       const query = `

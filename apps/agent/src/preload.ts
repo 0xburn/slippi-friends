@@ -12,6 +12,7 @@ const api = {
   startAuth: () => ipcRenderer.invoke('auth:start'),
   getUser: () => ipcRenderer.invoke('auth:getUser'),
   isAuthenticated: () => ipcRenderer.invoke('auth:isAuthenticated'),
+  checkBlacklist: () => ipcRenderer.invoke('auth:checkBlacklist'),
   logout: () => ipcRenderer.invoke('auth:logout'),
   onAuthChanged: (cb: (user: any) => void): Unsubscribe => onEvent('auth:changed', cb),
 
@@ -29,6 +30,7 @@ const api = {
   getOpponents: (limit?: number) => ipcRenderer.invoke('opponents:list', limit),
   backfillOpponents: (sinceMs?: number, beforeMs?: number) => ipcRenderer.invoke('opponents:backfill', sinceMs, beforeMs),
   onNewOpponent: (cb: (opponent: any) => void): Unsubscribe => onEvent('opponent:new', cb),
+  onIdentityMismatch: (cb: (info: any) => void): Unsubscribe => onEvent('identity:mismatch', cb),
 
   getOnlineUsers: () => ipcRenderer.invoke('presence:online'),
   onPresenceUpdate: (cb: (users: any[]) => void): Unsubscribe => onEvent('presence:updated', cb),

@@ -16,6 +16,12 @@ export type OpponentInfo = {
   characterId: number;
 };
 
+export type IdentityMismatch = {
+  claimedCode: string;
+  actualCode: string;
+  replayFile: string;
+};
+
 function normalizeConnectCode(code: string): string {
   return code.replace(/\u8194/g, '#').trim().toUpperCase();
 }
@@ -27,6 +33,12 @@ function mapGameMode(mode: number | null | undefined): string | null {
 }
 
 let watcher: ReturnType<typeof chokidar.watch> | null = null;
+
+let onIdentityMismatch: ((info: IdentityMismatch) => void) | null = null;
+
+export function setIdentityMismatchHandler(handler: (info: IdentityMismatch) => void): void {
+  onIdentityMismatch = handler;
+}
 
 export async function processNewReplay(
   filePath: string,
@@ -44,6 +56,49 @@ export async function processNewReplay(
     const localPlayer = settings.players.find(
       (p) => normalizeConnectCode(p.connectCode || '') === localNorm,
     );
+
+    // Identity mismatch detection: if this is an online game with human
+    // players but none of them match the claimed connect code, the user
+    // is spoofing their identity via user.json.
+    if (!localPlayer && humans.length >= 2) {
+      const actualCodes = humans
+        .map((p) => normalizeConnectCode(p.connectCode || ''))
+        .filter(Boolean);
+      if (actualCodes.length > 0) {
+        const replayName = path.basename(filePath);
+        const mismatch: IdentityMismatch = {
+          claimedCode: localNorm,
+          actualCode: actualCodes[0],
+          replayFile: replayName,
+        };
+        console.warn('[identity] MISMATCH DETECTED:', mismatch);
+        try {
+          const { data: userData } = await supabase.auth.getUser();
+          if (userData?.user) {
+            const meta = userData.user.user_metadata || {};
+            await supabase.from('blacklist').insert({
+              user_id: userData.user.id,
+              discord_id: meta.provider_id || null,
+              discord_username: meta.full_name || meta.name || null,
+              reason: 'identity_mismatch',
+              claimed_code: localNorm,
+              actual_code: actualCodes[0],
+              replay_file: replayName,
+            });
+            await supabase.from('profiles').update({
+              connect_code: null,
+              slippi_uid: null,
+              verified: false,
+              verified_at: null,
+            }).eq('id', userData.user.id);
+          }
+        } catch (e) {
+          console.error('Failed to blacklist/unlink spoofed profile', e);
+        }
+        if (onIdentityMismatch) onIdentityMismatch(mismatch);
+      }
+    }
+
     const opponents = settings.players.filter(
       (p) => normalizeConnectCode(p.connectCode || '') !== localNorm,
     );

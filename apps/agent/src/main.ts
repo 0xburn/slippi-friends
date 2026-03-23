@@ -15,7 +15,7 @@ import { getSettings, isSetupComplete, updateSettings } from './settings';
 import {
   addRecentOpponent, createTray, destroyTray, updateTrayStatus,
 } from './tray';
-import { startWatcher, stopWatcher } from './watcher';
+import { setIdentityMismatchHandler, startWatcher, stopWatcher } from './watcher';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -93,6 +93,13 @@ async function stopAgentServices(): Promise<void> {
 async function startAgentServices(identity: SlippiIdentity, userId: string): Promise<void> {
   await stopAgentServices();
   const st = getSettings();
+
+  setIdentityMismatchHandler(async (mismatch) => {
+    console.warn('[main] Identity mismatch — stopping services and notifying renderer');
+    await stopAgentServices();
+    sendToRenderer('identity:mismatch', mismatch);
+  });
+
   startWatcher(st.replayDir, identity.connectCode, (info) => {
     try {
       addRecentOpponent(info.connectCode, info.displayName);

@@ -10,6 +10,7 @@ import { Settings } from './pages/Settings';
 type BootState =
   | { phase: 'loading' }
   | { phase: 'no-slippi' }
+  | { phase: 'banned'; reason: string; claimedCode?: string; actualCode?: string }
   | { phase: 'need-auth'; connectCode: string; displayName: string }
   | { phase: 'need-setup'; connectCode: string }
   | { phase: 'ready' };
@@ -155,9 +156,14 @@ function AuthPrompt({ connectCode, displayName }: { connectCode: string; display
 
 export function App() {
   const [state, setState] = useState<BootState>({ phase: 'loading' });
+  const [mismatch, setMismatch] = useState<{ claimedCode: string; actualCode: string } | null>(null);
 
   useEffect(() => {
     boot();
+    const unsub = window.api.onIdentityMismatch((info) => {
+      setMismatch({ claimedCode: info.claimedCode, actualCode: info.actualCode });
+    });
+    return unsub;
   }, []);
 
   async function boot() {
@@ -173,6 +179,17 @@ export function App() {
       return;
     }
 
+    const ban = await window.api.checkBlacklist();
+    if (ban) {
+      setState({
+        phase: 'banned',
+        reason: ban.reason,
+        claimedCode: ban.claimed_code,
+        actualCode: ban.actual_code,
+      });
+      return;
+    }
+
     const setupDone = await window.api.isSetupComplete();
     if (!setupDone) {
       setState({ phase: 'need-setup', connectCode: identity.connectCode });
@@ -180,6 +197,65 @@ export function App() {
     }
 
     setState({ phase: 'ready' });
+  }
+
+  if (mismatch) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="fixed top-0 left-0 right-0 h-[52px] drag" />
+        <div className="w-full max-w-md px-8 text-center space-y-6">
+          <div className="text-5xl">⚠️</div>
+          <h1 className="text-2xl font-display font-bold text-red-400">
+            Identity Mismatch Detected
+          </h1>
+          <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-5 text-left space-y-3">
+            <p className="text-sm text-red-200/90">
+              Your claimed connect code <strong className="font-mono text-white">{mismatch.claimedCode}</strong> does
+              not match the connect code found in your replays: <strong className="font-mono text-white">{mismatch.actualCode}</strong>.
+            </p>
+            <p className="text-xs text-gray-400 leading-relaxed">
+              Your profile has been unlinked and your account has been flagged. If
+              this is an error, contact <span className="text-white font-medium">lucky7smelee@gmail.com</span> to appeal.
+            </p>
+          </div>
+          <button
+            onClick={() => window.location.reload()}
+            className="w-full rounded-xl bg-[#21BA45] px-6 py-3 font-semibold text-white transition-all hover:bg-[#1ea33e]"
+          >
+            Restart
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (state.phase === 'banned') {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="fixed top-0 left-0 right-0 h-[52px] drag" />
+        <div className="w-full max-w-md px-8 text-center space-y-6">
+          <div className="text-5xl">🚫</div>
+          <h1 className="text-2xl font-display font-bold text-red-400">
+            Account Suspended
+          </h1>
+          <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-5 text-left space-y-3">
+            <p className="text-sm text-red-200/90">
+              This account has been banned for identity spoofing.
+            </p>
+            {state.claimedCode && state.actualCode && (
+              <p className="text-xs text-gray-500">
+                Claimed <strong className="font-mono text-gray-400">{state.claimedCode}</strong>
+                {' '}but played as <strong className="font-mono text-gray-400">{state.actualCode}</strong>.
+              </p>
+            )}
+            <p className="text-xs text-gray-400 leading-relaxed">
+              If you believe this is an error, contact{' '}
+              <span className="text-white font-medium">lucky7smelee@gmail.com</span> to appeal.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (state.phase === 'loading') {
