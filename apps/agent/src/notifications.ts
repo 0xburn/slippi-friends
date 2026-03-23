@@ -65,3 +65,20 @@ export function showFriendRequestNotification(
     console.error('showFriendRequestNotification failed', e);
   }
 }
+
+export function showPlayInviteNotification(
+  fromCode: string,
+  onClick?: () => void,
+): void {
+  try {
+    if (!Notification.isSupported()) return;
+    const n = new Notification({
+      title: 'Slippi Friends',
+      body: `${fromCode} wants to play!`,
+    });
+    if (onClick) n.on('click', onClick);
+    n.show();
+  } catch (e) {
+    console.error('showPlayInviteNotification failed', e);
+  }
+}

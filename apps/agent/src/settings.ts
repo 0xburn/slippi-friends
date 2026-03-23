@@ -8,6 +8,8 @@ export type AgentSettings = {
   replayDir: string;
   autoLaunch: boolean;
   showNotifications: boolean;
+  notifyFriendOnline: boolean;
+  notifyPlayInvite: boolean;
   setupComplete: boolean;
 };
 
@@ -23,10 +25,12 @@ export function getSettings(): AgentSettings {
       replayDir: (store.get('replayDir') as string | undefined) ?? getDefaultReplayDir(),
       autoLaunch: Boolean(store.get('autoLaunch')),
       showNotifications: store.get('showNotifications') !== false,
+      notifyFriendOnline: store.get('notifyFriendOnline') !== false,
+      notifyPlayInvite: store.get('notifyPlayInvite') !== false,
       setupComplete: isSetupComplete(),
     };
   } catch {
-    return { replayDir: getDefaultReplayDir(), autoLaunch: false, showNotifications: true, setupComplete: false };
+    return { replayDir: getDefaultReplayDir(), autoLaunch: false, showNotifications: true, notifyFriendOnline: true, notifyPlayInvite: true, setupComplete: false };
   }
 }
 
@@ -40,6 +44,8 @@ export function updateSettings(partial: Partial<AgentSettings>): AgentSettings {
       app.setLoginItemSettings({ openAtLogin: next.autoLaunch, openAsHidden: true });
     }
     if (partial.showNotifications !== undefined) store.set('showNotifications', next.showNotifications);
+    if (partial.notifyFriendOnline !== undefined) store.set('notifyFriendOnline', next.notifyFriendOnline);
+    if (partial.notifyPlayInvite !== undefined) store.set('notifyPlayInvite', next.notifyPlayInvite);
     if (partial.setupComplete !== undefined) store.set('setupComplete', next.setupComplete);
     return next;
   } catch {

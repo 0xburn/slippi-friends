@@ -324,6 +324,65 @@ export function registerIpcHandlers(
     } catch (e: any) { return { error: e.message }; }
   });
 
+  const INVITE_COOLDOWN_MS = 5 * 60 * 1000;
+
+  ipcMain.handle('invite:send', async (_e, friendUserId: string) => {
+    try {
+      const user = await getCurrentUser();
+      if (!user) return { error: 'Not authenticated' };
+
+      const { data: existing } = await supabase
+        .from('play_invites')
+        .select('created_at')
+        .eq('sender_id', user.id)
+        .eq('receiver_id', friendUserId)
+        .single();
+
+      if (existing) {
+        const elapsed = Date.now() - new Date(existing.created_at).getTime();
+        if (elapsed < INVITE_COOLDOWN_MS) {
+          const remaining = Math.ceil((INVITE_COOLDOWN_MS - elapsed) / 60_000);
+          return { error: `Wait ${remaining}m before inviting again` };
+        }
+      }
+
+      const { error } = await supabase
+        .from('play_invites')
+        .upsert({
+          sender_id: user.id,
+          receiver_id: friendUserId,
+          created_at: new Date().toISOString(),
+        }, { onConflict: 'sender_id,receiver_id' });
+
+      if (error) return { error: error.message };
+      return { ok: true };
+    } catch (e: any) { return { error: e.message }; }
+  });
+
+  ipcMain.handle('invite:pending', async () => {
+    try {
+      const user = await getCurrentUser();
+      if (!user) return [];
+
+      const cutoff = new Date(Date.now() - INVITE_COOLDOWN_MS).toISOString();
+      const { data } = await supabase
+        .from('play_invites')
+        .select('id, sender_id, created_at, profiles!play_invites_sender_id_fkey(connect_code, display_name)')
+        .eq('receiver_id', user.id)
+        .gte('created_at', cutoff)
+        .order('created_at', { ascending: false });
+
+      return data || [];
+    } catch { return []; }
+  });
+
+  ipcMain.handle('invite:dismiss', async (_e, inviteId: string) => {
+    try {
+      await supabase.from('play_invites').delete().eq('id', inviteId);
+      return { ok: true };
+    } catch (e: any) { return { error: e.message }; }
+  });
+
   ipcMain.handle('opponents:backfill', async (_e, sinceMs?: number, beforeMs?: number) => {
     try {
       const identity = getIdentity();

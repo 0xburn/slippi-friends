@@ -53,6 +53,8 @@ export function Friends() {
   const [removing, setRemoving] = useState<string | null>(null);
   const [responding, setResponding] = useState<string | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [inviteSent, setInviteSent] = useState<Record<string, string | true>>({});
+  const [inviting, setInviting] = useState<string | null>(null);
 
   const [myStatus, setMyStatus] = useState<'online' | 'in-game' | 'offline'>('offline');
   const [myIdentity, setMyIdentity] = useState<{ connectCode: string; displayName: string } | null>(null);
@@ -209,6 +211,22 @@ export function Friends() {
     await window.api.declineFriend(requestId);
     await loadIncoming();
     setResponding(null);
+  }
+
+  async function handleInvite(friendId: string) {
+    setInviting(friendId);
+    const result = await window.api.sendPlayInvite(friendId);
+    if (result.error) {
+      setInviteSent((prev) => ({ ...prev, [friendId]: result.error }));
+    } else {
+      setInviteSent((prev) => ({ ...prev, [friendId]: true }));
+    }
+    setInviting(null);
+    setTimeout(() => setInviteSent((prev) => {
+      const next = { ...prev };
+      delete next[friendId];
+      return next;
+    }), 3000);
   }
 
   async function handleCopy(code: string) {
@@ -405,34 +423,50 @@ export function Friends() {
             </p>
           </div>
         )}
-        {accepted.map((f) => (
-          <div key={f.id} className="group flex items-center gap-2">
-            <div className="flex-1 min-w-0">
-              <PlayerCard
-                player={{
-                  connectCode: f.connectCode,
-                  displayName: f.displayName,
-                  discordUsername: f.discordUsername,
-                  avatarUrl: f.avatarUrl,
-                  rating: f.rating,
-                  characterId: f.characterId,
-                  status: f.status,
-                  currentCharacter: f.currentCharacter,
-                  opponentCode: f.opponentCode,
-                  playingSince: f.playingSince,
-                }}
-                onClick={() => handleCopy(f.connectCode)}
-              />
+        {accepted.map((f) => {
+          const invState = inviteSent[f.friendId];
+          return (
+            <div key={f.id} className="group flex items-center gap-2">
+              <div className="flex-1 min-w-0">
+                <PlayerCard
+                  player={{
+                    connectCode: f.connectCode,
+                    displayName: f.displayName,
+                    discordUsername: f.discordUsername,
+                    avatarUrl: f.avatarUrl,
+                    rating: f.rating,
+                    characterId: f.characterId,
+                    status: f.status,
+                    currentCharacter: f.currentCharacter,
+                    opponentCode: f.opponentCode,
+                    playingSince: f.playingSince,
+                  }}
+                  onClick={() => handleCopy(f.connectCode)}
+                />
+              </div>
+              {invState === true ? (
+                <span className="shrink-0 text-[10px] font-medium text-[#21BA45]">Sent!</span>
+              ) : typeof invState === 'string' ? (
+                <span className="shrink-0 text-[10px] font-medium text-yellow-500 max-w-[100px] text-right">{invState}</span>
+              ) : (
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleInvite(f.friendId); }}
+                  disabled={inviting === f.friendId}
+                  className="shrink-0 opacity-0 group-hover:opacity-100 rounded-lg bg-[#21BA45]/10 px-2.5 py-1.5 text-xs text-[#21BA45] hover:bg-[#21BA45]/20 transition-all"
+                >
+                  {inviting === f.friendId ? '...' : '🎮 Play'}
+                </button>
+              )}
+              <button
+                onClick={(e) => { e.stopPropagation(); handleRemove(f.id); }}
+                disabled={removing === f.id}
+                className="shrink-0 opacity-0 group-hover:opacity-100 rounded-lg bg-red-500/10 px-2.5 py-1.5 text-xs text-red-400 hover:bg-red-500/20 transition-all"
+              >
+                {removing === f.id ? '...' : 'Remove'}
+              </button>
             </div>
-            <button
-              onClick={(e) => { e.stopPropagation(); handleRemove(f.id); }}
-              disabled={removing === f.id}
-              className="shrink-0 opacity-0 group-hover:opacity-100 rounded-lg bg-red-500/10 px-2.5 py-1.5 text-xs text-red-400 hover:bg-red-500/20 transition-all"
-            >
-              {removing === f.id ? '...' : 'Remove'}
-            </button>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

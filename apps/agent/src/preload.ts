@@ -27,6 +27,10 @@ const api = {
   declineFriend: (requestId: string) => ipcRenderer.invoke('friends:decline', requestId),
   removeFriend: (friendshipId: string) => ipcRenderer.invoke('friends:remove', friendshipId),
 
+  sendPlayInvite: (friendUserId: string) => ipcRenderer.invoke('invite:send', friendUserId),
+  getPendingInvites: () => ipcRenderer.invoke('invite:pending'),
+  dismissInvite: (inviteId: string) => ipcRenderer.invoke('invite:dismiss', inviteId),
+
   getOpponents: (limit?: number) => ipcRenderer.invoke('opponents:list', limit),
   getOpponentsPage: (before: string, limit?: number) => ipcRenderer.invoke('opponents:page', before, limit),
   getLatestMatchTimestamp: () => ipcRenderer.invoke('opponents:latestTimestamp'),

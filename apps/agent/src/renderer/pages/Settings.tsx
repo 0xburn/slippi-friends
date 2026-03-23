@@ -4,6 +4,8 @@ interface SettingsState {
   replayDir: string;
   autoLaunch: boolean;
   showNotifications: boolean;
+  notifyFriendOnline: boolean;
+  notifyPlayInvite: boolean;
 }
 
 export function Settings() {
@@ -11,6 +13,8 @@ export function Settings() {
     replayDir: '',
     autoLaunch: false,
     showNotifications: true,
+    notifyFriendOnline: true,
+    notifyPlayInvite: true,
   });
   const [saved, setSaved] = useState(false);
   const [updateMsg, setUpdateMsg] = useState<string | null>(null);
@@ -21,6 +25,8 @@ export function Settings() {
         replayDir: s.replayDir || '',
         autoLaunch: s.autoLaunch || false,
         showNotifications: s.showNotifications !== false,
+        notifyFriendOnline: s.notifyFriendOnline !== false,
+        notifyPlayInvite: s.notifyPlayInvite !== false,
       });
     });
     return window.api.onUpdateStatus((s: any) => {
@@ -39,7 +45,7 @@ export function Settings() {
     }
   }
 
-  async function toggle(key: 'autoLaunch' | 'showNotifications') {
+  async function toggle(key: keyof Omit<SettingsState, 'replayDir'>) {
     const next = !settings[key];
     setSettings((s) => ({ ...s, [key]: next }));
     await window.api.updateSettings({ [key]: next });
@@ -55,6 +61,8 @@ export function Settings() {
     setSaved(true);
     setTimeout(() => setSaved(false), 1500);
   }
+
+  const notifsEnabled = settings.showNotifications;
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -90,12 +98,32 @@ export function Settings() {
           checked={settings.autoLaunch}
           onChange={() => toggle('autoLaunch')}
         />
+      </div>
 
+      <div className="rounded-2xl border border-[#2a2a2a] bg-[#141414] divide-y divide-[#2a2a2a]">
         <ToggleRow
           label="Notifications"
-          description="Show desktop notifications for new opponents"
+          description="Enable desktop notifications"
           checked={settings.showNotifications}
           onChange={() => toggle('showNotifications')}
+        />
+
+        <ToggleRow
+          label="Friend Online"
+          description="Notify when a friend comes online or enters a game"
+          checked={notifsEnabled && settings.notifyFriendOnline}
+          onChange={() => toggle('notifyFriendOnline')}
+          disabled={!notifsEnabled}
+          indent
+        />
+
+        <ToggleRow
+          label="Play Invites"
+          description="Notify when a friend invites you to play"
+          checked={notifsEnabled && settings.notifyPlayInvite}
+          onChange={() => toggle('notifyPlayInvite')}
+          disabled={!notifsEnabled}
+          indent
         />
       </div>
 
@@ -123,7 +151,7 @@ export function Settings() {
       </div>
 
       <p className="text-center text-xs text-gray-600">
-        Slippi Friends v0.1.26
+        Slippi Friends v0.1.27
       </p>
     </div>
   );
@@ -134,20 +162,25 @@ function ToggleRow({
   description,
   checked,
   onChange,
+  disabled,
+  indent,
 }: {
   label: string;
   description: string;
   checked: boolean;
   onChange: () => void;
+  disabled?: boolean;
+  indent?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between p-5">
+    <div className={`flex items-center justify-between p-5 ${indent ? 'pl-10' : ''} ${disabled ? 'opacity-40 pointer-events-none' : ''}`}>
       <div>
         <p className="text-sm font-medium text-gray-300">{label}</p>
         <p className="text-xs text-gray-500 mt-0.5">{description}</p>
       </div>
       <button
         onClick={onChange}
+        disabled={disabled}
         className={`relative w-11 h-6 rounded-full transition-colors ${
           checked ? 'bg-[#21BA45]' : 'bg-[#333]'
         }`}

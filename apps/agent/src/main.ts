@@ -7,7 +7,7 @@ import {
 import { APP_PROTOCOL } from './config';
 import { getIdentity, verifyIdentity, type SlippiIdentity } from './identity';
 import { registerIpcHandlers, sendToRenderer } from './ipc';
-import { showFriendOnlineNotification, showFriendRequestNotification, showOpponentNotification } from './notifications';
+import { showFriendOnlineNotification, showFriendRequestNotification, showOpponentNotification, showPlayInviteNotification } from './notifications';
 import { supabase } from './supabase';
 import {
   getCurrentStatus, pushOfflineAndStop, setLastOpponent, startPresenceLoop, stopPresenceLoop, updatePresenceReplayDir,
@@ -23,6 +23,7 @@ let mainWindow: BrowserWindow | null = null;
 let friendPollTimer: ReturnType<typeof setInterval> | null = null;
 const previousFriendStatuses = new Map<string, string>();
 const knownIncomingRequestIds = new Set<string>();
+const knownPlayInviteIds = new Set<string>();
 
 function parseDotEnvContent(content: string): void {
   for (const line of content.split(/\r?\n/)) {
@@ -96,13 +97,15 @@ async function stopAgentServices(): Promise<void> {
   if (friendPollTimer) { clearInterval(friendPollTimer); friendPollTimer = null; }
   previousFriendStatuses.clear();
   knownIncomingRequestIds.clear();
+  knownPlayInviteIds.clear();
   try { await stopPresenceLoop(); } catch (e) { console.error('stopPresenceLoop', e); }
   stopWatcher();
 }
 
 async function pollFriendStatusesForNotifications(userId: string): Promise<void> {
   try {
-    if (!getSettings().showNotifications) return;
+    const st = getSettings();
+    if (!st.showNotifications || !st.notifyFriendOnline) return;
     const { data: friendRows } = await supabase.from('friends')
       .select('friend_id, friend_connect_code, profiles!friends_friend_id_fkey(connect_code)')
       .eq('user_id', userId)
@@ -134,6 +137,7 @@ async function pollFriendStatusesForNotifications(userId: string): Promise<void>
   } catch (e) { console.error('[main] friend status poll failed', e); }
 
   pollIncomingFriendRequests(userId);
+  pollPlayInvites(userId);
 }
 
 async function pollIncomingFriendRequests(userId: string): Promise<void> {
@@ -167,6 +171,34 @@ async function pollIncomingFriendRequests(userId: string): Promise<void> {
       });
     }
   } catch (e) { console.error('[main] incoming request poll failed', e); }
+}
+
+async function pollPlayInvites(userId: string): Promise<void> {
+  try {
+    const st = getSettings();
+    if (!st.showNotifications || !st.notifyPlayInvite) return;
+
+    const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const { data: invites } = await supabase
+      .from('play_invites')
+      .select('id, sender_id, created_at, profiles!play_invites_sender_id_fkey(connect_code)')
+      .eq('receiver_id', userId)
+      .gte('created_at', cutoff);
+    if (!invites) return;
+
+    for (const inv of invites) {
+      if (knownPlayInviteIds.has(inv.id)) continue;
+      knownPlayInviteIds.add(inv.id);
+      const fromCode = (inv as any).profiles?.connect_code;
+      if (!fromCode) continue;
+      showPlayInviteNotification(fromCode, () => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      });
+    }
+  } catch (e) { console.error('[main] play invite poll failed', e); }
 }
 
 async function startAgentServices(identity: SlippiIdentity, userId: string): Promise<void> {
