@@ -1,0 +1,3 @@
+ALTER TABLE presence_log
+  ADD COLUMN IF NOT EXISTS opponent_code TEXT,
+  ADD COLUMN IF NOT EXISTS playing_since TIMESTAMPTZ;

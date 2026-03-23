@@ -21,6 +21,8 @@ interface PlayerCardProps {
     rating?: number | null;
     characterId?: number | null;
     status?: 'online' | 'in-game' | 'offline';
+    opponentCode?: string | null;
+    playingSince?: string | null;
   };
   showStatus?: boolean;
   expandable?: boolean;
@@ -58,7 +60,14 @@ export function PlayerCard({ player, showStatus = true, expandable = true, onCli
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="font-mono font-bold text-white tracking-wide">{player.connectCode}</span>
-            {showStatus && player.status && <OnlineIndicator status={player.status} size="sm" />}
+            {showStatus && player.status && (
+              <OnlineIndicator
+                status={player.status}
+                size="sm"
+                opponentCode={player.opponentCode}
+                playingSince={player.playingSince}
+              />
+            )}
           </div>
           <div className="flex items-center gap-2 min-w-0">
             {player.displayName && (

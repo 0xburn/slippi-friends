@@ -3,7 +3,13 @@ import * as path from 'path';
 
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
-import { DOLPHIN_PROCESS_NAMES, PRESENCE_POLL_INTERVAL, REPLAY_ACTIVE_THRESHOLD } from './config';
+import {
+  DOLPHIN_PROCESS_NAMES,
+  OPPONENT_RECENT_THRESHOLD,
+  PRESENCE_POLL_INTERVAL,
+  REPLAY_ACTIVE_THRESHOLD,
+  SLIPPI_LAUNCHER_PROCESS_NAMES,
+} from './config';
 import { supabase } from './supabase';
 
 const find = require('find-process') as (
@@ -19,6 +25,8 @@ export interface OnlineUser {
   displayName: string;
   status: string;
   currentCharacter: number | null;
+  opponentCode: string | null;
+  playingSince: string | null;
   updatedAt: string;
 }
 
@@ -29,6 +37,8 @@ let presenceChannel: RealtimeChannel | null = null;
 let subscribed = false;
 let currentStatus: PresenceStatus = 'offline';
 let lastCharacterId: number | null = null;
+let lastOpponentCode: string | null = null;
+let lastOpponentTimestamp: number = 0;
 let loopConnectCode = '';
 let loopDisplayName = '';
 let loopUserId = '';
@@ -42,6 +52,11 @@ export function setLastPlayedCharacterId(id: number | null): void {
 
 export function getLastPlayedCharacterId(): number | null {
   return lastCharacterId;
+}
+
+export function setLastOpponent(connectCode: string): void {
+  lastOpponentCode = connectCode;
+  lastOpponentTimestamp = Date.now();
 }
 
 export function getCurrentStatus(): PresenceStatus {
@@ -77,6 +92,8 @@ function extractOnlineUsers(): OnlineUser[] {
           displayName: e.displayName || '',
           status: e.status || 'online',
           currentCharacter: e.currentCharacter ?? null,
+          opponentCode: e.opponentCode ?? null,
+          playingSince: e.playingSince ?? null,
           updatedAt: e.updatedAt || '',
         });
       }
@@ -85,14 +102,14 @@ function extractOnlineUsers(): OnlineUser[] {
   } catch (e) { console.error('extractOnlineUsers', e); return []; }
 }
 
-async function isDolphinRunning(): Promise<boolean> {
+async function isProcessRunning(names: readonly string[]): Promise<boolean> {
   try {
-    for (const name of DOLPHIN_PROCESS_NAMES) {
+    for (const name of names) {
       const list = await find('name', name, true);
       if (list.length > 0) return true;
     }
   } catch (e) {
-    console.error('isDolphinRunning failed', e);
+    console.error('isProcessRunning failed', e);
   }
   return false;
 }
@@ -121,12 +138,26 @@ async function hasRecentReplayActivity(dir: string): Promise<boolean> {
 }
 
 function resolvePresenceStatus(
-  dolphin: boolean,
+  launcherRunning: boolean,
+  dolphinRunning: boolean,
   replayHot: boolean,
 ): PresenceStatus {
-  if (!dolphin) return 'offline';
-  if (replayHot) return 'in-game';
+  if (!launcherRunning) return 'offline';
+  if (dolphinRunning && replayHot) return 'in-game';
   return 'online';
+}
+
+function getRecentOpponent(): { code: string; since: string } | null {
+  if (
+    !lastOpponentCode ||
+    Date.now() - lastOpponentTimestamp > OPPONENT_RECENT_THRESHOLD
+  ) {
+    return null;
+  }
+  return {
+    code: lastOpponentCode,
+    since: new Date(lastOpponentTimestamp).toISOString(),
+  };
 }
 
 async function pushPresence(
@@ -136,18 +167,15 @@ async function pushPresence(
   userId: string,
 ): Promise<void> {
   try {
-    const logStatus =
-      status === 'offline'
-        ? 'offline'
-        : status === 'in-game'
-          ? 'in-game'
-          : 'online';
+    const opponent = status === 'in-game' ? getRecentOpponent() : null;
 
     await supabase.from('presence_log').upsert(
       {
         user_id: userId,
-        status: logStatus,
+        status,
         current_character: lastCharacterId,
+        opponent_code: opponent?.code ?? null,
+        playing_since: opponent?.since ?? null,
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'user_id' },
@@ -162,13 +190,17 @@ async function pushPresence(
 
     if (!presenceChannel || !subscribed) return;
 
-    const payload = {
+    const payload: Record<string, any> = {
       connectCode,
       displayName,
-      status: logStatus === 'in-game' ? 'in-game' : 'online',
+      status,
       currentCharacter: lastCharacterId,
       updatedAt: new Date().toISOString(),
     };
+    if (opponent) {
+      payload.opponentCode = opponent.code;
+      payload.playingSince = opponent.since;
+    }
 
     await presenceChannel.track(payload);
   } catch (e) {
@@ -249,9 +281,10 @@ export async function startPresenceLoop(
 
     const tick = async () => {
       try {
-        const dolphin = await isDolphinRunning();
+        const launcherRunning = await isProcessRunning(SLIPPI_LAUNCHER_PROCESS_NAMES);
+        const dolphinRunning = await isProcessRunning(DOLPHIN_PROCESS_NAMES);
         const replayHot = await hasRecentReplayActivity(replayDirForPoll);
-        const next = resolvePresenceStatus(dolphin, replayHot);
+        const next = resolvePresenceStatus(launcherRunning, dolphinRunning, replayHot);
         currentStatus = next;
         await pushPresence(
           next,

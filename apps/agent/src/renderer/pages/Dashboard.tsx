@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { OnlineIndicator } from '../components/OnlineIndicator';
 import { RankBadge } from '../components/RankBadge';
 import { CharacterIcon } from '../components/CharacterIcon';
@@ -35,17 +35,28 @@ export function Dashboard() {
   const [identity, setIdentity] = useState<IdentityData | null>(null);
   const [user, setUser] = useState<UserData | null>(null);
   const [status, setStatus] = useState<'online' | 'in-game' | 'offline'>('offline');
+  const [opponentCode, setOpponentCode] = useState<string | null>(null);
+  const [playingSince, setPlayingSince] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const identityRef = useRef<IdentityData | null>(null);
 
   useEffect(() => {
-    window.api.getIdentity().then(setIdentity);
+    window.api.getIdentity().then((id) => {
+      setIdentity(id);
+      identityRef.current = id;
+    });
     window.api.getProfile().then(setProfile);
     window.api.getUser().then(setUser);
 
     const unsub = window.api.onPresenceUpdate((users) => {
-      if (!identity) return;
-      const me = users.find((u: any) => u.connectCode === identity.connectCode);
-      if (me) setStatus(me.status || 'online');
+      const myCode = identityRef.current?.connectCode;
+      if (!myCode) return;
+      const me = users.find((u: any) => u.connectCode === myCode);
+      if (me) {
+        setStatus(me.status || 'online');
+        setOpponentCode(me.opponentCode ?? null);
+        setPlayingSince(me.playingSince ?? null);
+      }
     });
     return unsub;
   }, []);
@@ -85,7 +96,12 @@ export function Dashboard() {
                   <h1 className="text-3xl font-mono font-bold tracking-wider text-white">
                     {connectCode}
                   </h1>
-                  <OnlineIndicator status={status} size="lg" />
+                  <OnlineIndicator
+                    status={status}
+                    size="lg"
+                    opponentCode={opponentCode}
+                    playingSince={playingSince}
+                  />
                 </div>
               ) : (
                 <h1 className="text-2xl font-display font-bold text-white mb-1">

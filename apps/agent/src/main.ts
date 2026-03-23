@@ -9,7 +9,7 @@ import { getIdentity, verifyIdentity, type SlippiIdentity } from './identity';
 import { registerIpcHandlers, sendToRenderer } from './ipc';
 import { showOpponentNotification } from './notifications';
 import {
-  getCurrentStatus, startPresenceLoop, stopPresenceLoop, updatePresenceReplayDir,
+  getCurrentStatus, setLastOpponent, startPresenceLoop, stopPresenceLoop, updatePresenceReplayDir,
 } from './presence';
 import { getSettings, isSetupComplete, updateSettings } from './settings';
 import {
@@ -104,6 +104,7 @@ async function startAgentServices(identity: SlippiIdentity, userId: string): Pro
   startWatcher(st.replayDir, identity.connectCode, (info) => {
     try {
       addRecentOpponent(info.connectCode, info.displayName);
+      setLastOpponent(info.connectCode);
       sendToRenderer('opponent:new', info);
       if (getSettings().showNotifications) {
         showOpponentNotification(info.connectCode, info.displayName, info.characterId);

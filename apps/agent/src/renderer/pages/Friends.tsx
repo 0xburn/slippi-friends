@@ -29,7 +29,7 @@ interface IncomingRequest {
 export function Friends() {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [incoming, setIncoming] = useState<IncomingRequest[]>([]);
-  const [onlineMap, setOnlineMap] = useState<Record<string, string>>({});
+  const [onlineMap, setOnlineMap] = useState<Record<string, { status: string; opponentCode?: string; playingSince?: string }>>({});
   const [search, setSearch] = useState('');
   const [addCode, setAddCode] = useState('');
   const [addError, setAddError] = useState('');
@@ -41,8 +41,14 @@ export function Friends() {
     loadFriends();
     loadIncoming();
     const unsub = window.api.onPresenceUpdate((users) => {
-      const map: Record<string, string> = {};
-      users.forEach((u: any) => { map[u.connectCode] = u.status; });
+      const map: Record<string, { status: string; opponentCode?: string; playingSince?: string }> = {};
+      users.forEach((u: any) => {
+        map[u.connectCode] = {
+          status: u.status,
+          opponentCode: u.opponentCode ?? undefined,
+          playingSince: u.playingSince ?? undefined,
+        };
+      });
       setOnlineMap(map);
     });
     return unsub;
@@ -59,10 +65,15 @@ export function Friends() {
   }
 
   const enriched = useMemo(() => {
-    return friends.map((f) => ({
-      ...f,
-      status: (onlineMap[f.connectCode] || 'offline') as Friend['status'],
-    }));
+    return friends.map((f) => {
+      const presence = onlineMap[f.connectCode];
+      return {
+        ...f,
+        status: (presence?.status || 'offline') as Friend['status'],
+        opponentCode: presence?.opponentCode ?? null,
+        playingSince: presence?.playingSince ?? null,
+      };
+    });
   }, [friends, onlineMap]);
 
   const { accepted, pendingOut } = useMemo(() => {
@@ -264,6 +275,8 @@ export function Friends() {
                   rating: f.rating,
                   characterId: f.characterId,
                   status: f.status,
+                  opponentCode: f.opponentCode,
+                  playingSince: f.playingSince,
                 }}
                 onClick={() => handleCopy(f.connectCode)}
               />
