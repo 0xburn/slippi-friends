@@ -326,16 +326,23 @@ export function registerIpcHandlers(
 
   const INVITE_COOLDOWN_MS = 5 * 60 * 1000;
 
-  ipcMain.handle('invite:send', async (_e, friendUserId: string) => {
+  ipcMain.handle('invite:send', async (_e, friendConnectCode: string) => {
     try {
       const user = await getCurrentUser();
       if (!user) return { error: 'Not authenticated' };
+
+      const { data: target } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('connect_code', friendConnectCode)
+        .single();
+      if (!target) return { error: 'Friend not found on app' };
 
       const { data: existing } = await supabase
         .from('play_invites')
         .select('created_at')
         .eq('sender_id', user.id)
-        .eq('receiver_id', friendUserId)
+        .eq('receiver_id', target.id)
         .single();
 
       if (existing) {
@@ -350,7 +357,7 @@ export function registerIpcHandlers(
         .from('play_invites')
         .upsert({
           sender_id: user.id,
-          receiver_id: friendUserId,
+          receiver_id: target.id,
           created_at: new Date().toISOString(),
         }, { onConflict: 'sender_id,receiver_id' });
 
@@ -367,12 +374,25 @@ export function registerIpcHandlers(
       const cutoff = new Date(Date.now() - INVITE_COOLDOWN_MS).toISOString();
       const { data } = await supabase
         .from('play_invites')
-        .select('id, sender_id, created_at, profiles!play_invites_sender_id_fkey(connect_code, display_name)')
+        .select('id, sender_id, created_at')
         .eq('receiver_id', user.id)
         .gte('created_at', cutoff)
         .order('created_at', { ascending: false });
+      if (!data || data.length === 0) return [];
 
-      return data || [];
+      const senderIds = data.map((d: any) => d.sender_id);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, connect_code, display_name')
+        .in('id', senderIds);
+      const profileMap: Record<string, any> = {};
+      (profiles || []).forEach((p: any) => { profileMap[p.id] = p; });
+
+      return data.map((d: any) => ({
+        ...d,
+        connectCode: profileMap[d.sender_id]?.connect_code,
+        displayName: profileMap[d.sender_id]?.display_name,
+      }));
     } catch { return []; }
   });
 

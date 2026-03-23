@@ -213,18 +213,18 @@ export function Friends() {
     setResponding(null);
   }
 
-  async function handleInvite(friendId: string) {
-    setInviting(friendId);
-    const result = await window.api.sendPlayInvite(friendId);
+  async function handleInvite(connectCode: string) {
+    setInviting(connectCode);
+    const result = await window.api.sendPlayInvite(connectCode);
     if (result.error) {
-      setInviteSent((prev) => ({ ...prev, [friendId]: result.error }));
+      setInviteSent((prev) => ({ ...prev, [connectCode]: result.error }));
     } else {
-      setInviteSent((prev) => ({ ...prev, [friendId]: true }));
+      setInviteSent((prev) => ({ ...prev, [connectCode]: true }));
     }
     setInviting(null);
     setTimeout(() => setInviteSent((prev) => {
       const next = { ...prev };
-      delete next[friendId];
+      delete next[connectCode];
       return next;
     }), 3000);
   }
@@ -424,7 +424,7 @@ export function Friends() {
           </div>
         )}
         {accepted.map((f) => {
-          const invState = inviteSent[f.friendId];
+          const invState = inviteSent[f.connectCode];
           return (
             <div key={f.id} className="group flex items-center gap-2">
               <div className="flex-1 min-w-0">
@@ -450,11 +450,11 @@ export function Friends() {
                 <span className="shrink-0 text-[10px] font-medium text-yellow-500 max-w-[100px] text-right">{invState}</span>
               ) : (
                 <button
-                  onClick={(e) => { e.stopPropagation(); handleInvite(f.friendId); }}
-                  disabled={inviting === f.friendId}
+                  onClick={(e) => { e.stopPropagation(); handleInvite(f.connectCode); }}
+                  disabled={inviting === f.connectCode}
                   className="shrink-0 opacity-0 group-hover:opacity-100 rounded-lg bg-[#21BA45]/10 px-2.5 py-1.5 text-xs text-[#21BA45] hover:bg-[#21BA45]/20 transition-all"
                 >
-                  {inviting === f.friendId ? '...' : '🎮 Play'}
+                  {inviting === f.connectCode ? '...' : '🎮 Play'}
                 </button>
               )}
               <button

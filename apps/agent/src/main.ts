@@ -181,15 +181,25 @@ async function pollPlayInvites(userId: string): Promise<void> {
     const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     const { data: invites } = await supabase
       .from('play_invites')
-      .select('id, sender_id, created_at, profiles!play_invites_sender_id_fkey(connect_code)')
+      .select('id, sender_id, created_at')
       .eq('receiver_id', userId)
       .gte('created_at', cutoff);
-    if (!invites) return;
+    if (!invites || invites.length === 0) return;
 
-    for (const inv of invites) {
-      if (knownPlayInviteIds.has(inv.id)) continue;
+    const newInvites = invites.filter((inv) => !knownPlayInviteIds.has(inv.id));
+    if (newInvites.length === 0) return;
+
+    const senderIds = newInvites.map((inv) => inv.sender_id);
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, connect_code')
+      .in('id', senderIds);
+    const profileMap: Record<string, string> = {};
+    (profiles || []).forEach((p: any) => { profileMap[p.id] = p.connect_code; });
+
+    for (const inv of newInvites) {
       knownPlayInviteIds.add(inv.id);
-      const fromCode = (inv as any).profiles?.connect_code;
+      const fromCode = profileMap[inv.sender_id];
       if (!fromCode) continue;
       showPlayInviteNotification(fromCode, () => {
         if (mainWindow && !mainWindow.isDestroyed()) {

@@ -27,7 +27,7 @@ const api = {
   declineFriend: (requestId: string) => ipcRenderer.invoke('friends:decline', requestId),
   removeFriend: (friendshipId: string) => ipcRenderer.invoke('friends:remove', friendshipId),
 
-  sendPlayInvite: (friendUserId: string) => ipcRenderer.invoke('invite:send', friendUserId),
+  sendPlayInvite: (connectCode: string) => ipcRenderer.invoke('invite:send', connectCode),
   getPendingInvites: () => ipcRenderer.invoke('invite:pending'),
   dismissInvite: (inviteId: string) => ipcRenderer.invoke('invite:dismiss', inviteId),
 
