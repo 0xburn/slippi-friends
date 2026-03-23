@@ -39,13 +39,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
-
-      - name: Ensure electron-builder binaries
-        shell: bash
-        run: |
-          npm rebuild app-builder-bin || true
-          npm install app-builder-bin --force
+        run: npm install
 
       - name: Create .env for agent
         shell: bash
