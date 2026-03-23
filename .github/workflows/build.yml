@@ -104,7 +104,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
-          name: Friendlies ${{ steps.version.outputs.tag }}
+          name: friendlies ${{ steps.version.outputs.tag }}
           draft: false
           prerelease: false
           generate_release_notes: true

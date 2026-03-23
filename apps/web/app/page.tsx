@@ -33,7 +33,7 @@ export default async function HomePage() {
   return (
     <div className="relative min-h-[calc(100vh-8rem)]">
       {/* Hero */}
-      <section className="pt-16 pb-20 sm:pt-24 sm:pb-28">
+      <section className="pt-16 pb-12 sm:pt-24 sm:pb-16">
         <div className="mx-auto max-w-2xl text-center">
           <div className="mb-6 flex justify-center">
             <Image
@@ -47,12 +47,12 @@ export default async function HomePage() {
           </div>
 
           <h1 className="font-display text-4xl font-bold tracking-tight text-white sm:text-5xl">
-          friendlies
+            friendlies
           </h1>
           <p className="mt-4 text-lg text-gray-400">
-            A companion app for Melee netplay.
+            friends lists for Melee
             <br className="hidden sm:block" />
-            See who&apos;s playing, track your sets, add friends.
+            see who&apos;s online, manage your friend list, and find new practice partners!
           </p>
 
           <div className="mt-8">
@@ -61,57 +61,53 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Features — minimal cards */}
-      <section className="mx-auto max-w-3xl grid gap-px sm:grid-cols-3 rounded-xl border border-[#2a2a2a] overflow-hidden">
-        {[
-          {
-            title: 'Live presence',
-            body: 'Know when friends are online, in queue, or mid-set.',
-          },
-          {
-            title: 'Match history',
-            body: 'Replays are scanned automatically. Every opponent, every game.',
-          },
-          {
-            title: 'Ranked stats',
-            body: 'ELO, win rate, mains, and placement pulled from Slippi.',
-          },
-        ].map((f) => (
-          <div
-            key={f.title}
-            className="bg-[#111] p-6"
-          >
-            <h2 className="text-sm font-semibold text-white">
-              {f.title}
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-gray-500">
-              {f.body}
-            </p>
-          </div>
-        ))}
+      {/* App screenshot */}
+      <section className="mx-auto max-w-3xl px-4">
+        <div className="rounded-xl border border-[#2a2a2a] overflow-hidden shadow-2xl shadow-black/50">
+          <Image
+            src="/appexample.png"
+            alt="Friendlies app"
+            width={1200}
+            height={750}
+            className="w-full"
+            priority
+          />
+        </div>
       </section>
 
-      {/* How it works */}
-      <section className="mx-auto mt-20 max-w-2xl">
-        <h2 className="text-center text-sm font-semibold uppercase tracking-wider text-gray-500">
-          How it works
-        </h2>
-        <div className="mt-8 space-y-6">
-          {[
-            ['Download', 'Grab the app. Point it at your Slippi replay folder.'],
-            ['Sign in', 'Link Discord to unlock friends, presence, and your profile.'],
-            ['Play', 'Opponents appear as you play. Add friends by connect code.'],
-          ].map(([title, body], i) => (
-            <div key={i} className="flex gap-4 items-start">
-              <span className="shrink-0 flex h-7 w-7 items-center justify-center rounded-full border border-[#2a2a2a] text-xs font-mono text-gray-500">
-                {i + 1}
-              </span>
-              <div>
-                <p className="text-sm font-medium text-white">{title}</p>
-                <p className="text-sm text-gray-500">{body}</p>
+      {/* Features + setup steps */}
+      <section className="mx-auto mt-20 max-w-3xl grid gap-px sm:grid-cols-3 rounded-xl border border-[#2a2a2a] overflow-hidden">
+        <div className="bg-[#111] p-6">
+          <h2 className="text-sm font-semibold text-white">Live presence</h2>
+          <p className="mt-2 text-sm leading-relaxed text-gray-500">
+            Know when friends are online, in queue, or mid-set.
+          </p>
+          <div className="mt-5 pt-5 border-t border-[#2a2a2a] space-y-3">
+            {[
+              ['1', 'Install friendlies'],
+              ['2', 'Sync with Discord'],
+              ['3', 'Play!'],
+            ].map(([n, label]) => (
+              <div key={n} className="flex items-center gap-3">
+                <span className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full border border-[#21BA45]/30 text-[10px] font-mono text-[#21BA45]">
+                  {n}
+                </span>
+                <span className="text-xs text-gray-400">{label}</span>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+        </div>
+        <div className="bg-[#111] p-6">
+          <h2 className="text-sm font-semibold text-white">Match history</h2>
+          <p className="mt-2 text-sm leading-relaxed text-gray-500">
+            Replays are scanned automatically. Every opponent, every game.
+          </p>
+        </div>
+        <div className="bg-[#111] p-6">
+          <h2 className="text-sm font-semibold text-white">Ranked stats</h2>
+          <p className="mt-2 text-sm leading-relaxed text-gray-500">
+            ELO, win rate, mains, and placement pulled from Slippi.
+          </p>
         </div>
       </section>
 
