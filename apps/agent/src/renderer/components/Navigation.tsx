@@ -28,8 +28,8 @@ export function Navigation() {
         <div className="h-[52px] shrink-0 drag" />
         <div className="flex items-center gap-2.5 px-5 pb-4 no-drag">
           <img src="./logo.png" alt="L7" className="w-8 h-8 rounded-lg" />
-          <span className="font-display font-bold text-base tracking-tight">
-            <span className="text-[#21BA45]">Friendlies</span>
+          <span className="font-display font-bold text-base tracking-tight text-white">
+            friendlies
           </span>
         </div>
         <nav className="flex-1 px-3 py-2 space-y-1">
@@ -60,7 +60,7 @@ export function Navigation() {
             {copied ? 'Copied!' : 'Share with a Friend!'}
           </button>
         </div>
-        <div className="px-5 py-2 text-[10px] text-gray-600">v0.1.33</div>
+        <div className="px-5 py-2 text-[10px] text-gray-600">v0.1.34</div>
       </aside>
       <main className="flex-1 overflow-y-auto">
         {/* Top drag region for the content area */}
