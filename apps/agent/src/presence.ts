@@ -8,6 +8,7 @@ import {
   OPPONENT_RECENT_THRESHOLD,
   PRESENCE_POLL_INTERVAL,
   REPLAY_ACTIVE_THRESHOLD,
+  SLIPPI_LAUNCHER_PROCESS_NAMES,
 } from './config';
 import { supabase } from './supabase';
 
@@ -166,9 +167,11 @@ async function hasRecentReplayActivity(dir: string): Promise<boolean> {
 }
 
 function resolvePresenceStatus(
+  launcherRunning: boolean,
   dolphinRunning: boolean,
   replayHot: boolean,
 ): PresenceStatus {
+  if (!launcherRunning && !dolphinRunning) return 'offline';
   if (dolphinRunning && replayHot) return 'in-game';
   return 'online';
 }
@@ -320,9 +323,10 @@ export async function startPresenceLoop(
 
     const tick = async () => {
       try {
+        const launcherRunning = await isProcessRunning(SLIPPI_LAUNCHER_PROCESS_NAMES);
         const dolphinRunning = await isProcessRunning(DOLPHIN_PROCESS_NAMES);
-        const replayHot = await hasRecentReplayActivity(replayDirForPoll);
-        const next = resolvePresenceStatus(dolphinRunning, replayHot);
+        const replayHot = dolphinRunning ? await hasRecentReplayActivity(replayDirForPoll) : false;
+        const next = resolvePresenceStatus(launcherRunning, dolphinRunning, replayHot);
         currentStatus = next;
         emitLocalStatus();
         await pushPresence(

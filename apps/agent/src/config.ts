@@ -4,6 +4,7 @@ import * as path from 'path';
 
 export const SLIPPI_LAUNCHER_PROCESS_NAMES = [
   'Slippi Launcher',
+  'Slippi_Launcher',
   'slippi-launcher',
   'Slippi Launcher.exe',
 ] as const;
