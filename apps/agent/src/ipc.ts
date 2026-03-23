@@ -226,23 +226,27 @@ export function registerIpcHandlers(win: BrowserWindow): void {
         .eq('connect_code', connectCode)
         .single();
 
-      // Check if they already sent us a request — auto-accept if so
       if (target) {
-        const { data: existing } = await supabase
+        const myCode = (await supabase.from('profiles').select('connect_code').eq('id', user.id).single()).data?.connect_code || '';
+
+        // Check if they already have a row for us (pending or accepted)
+        const { data: theirRow } = await supabase
           .from('friends')
-          .select('id')
+          .select('id, status')
           .eq('user_id', target.id)
-          .eq('friend_connect_code', (await supabase.from('profiles').select('connect_code').eq('id', user.id).single()).data?.connect_code || '')
-          .eq('status', 'pending')
+          .eq('friend_connect_code', myCode)
           .single();
 
-        if (existing) {
-          // They already requested us — accept it and create our row as accepted
-          await supabase
-            .from('friends')
-            .update({ status: 'accepted', friend_id: user.id })
-            .eq('id', existing.id);
+        if (theirRow) {
+          // Ensure their row is accepted
+          if (theirRow.status !== 'accepted') {
+            await supabase
+              .from('friends')
+              .update({ status: 'accepted', friend_id: user.id })
+              .eq('id', theirRow.id);
+          }
 
+          // Ensure our row exists and is accepted
           await supabase
             .from('friends')
             .upsert({
@@ -252,6 +256,18 @@ export function registerIpcHandlers(win: BrowserWindow): void {
               status: 'accepted',
             }, { onConflict: 'user_id,friend_connect_code' });
 
+          return { ok: true, mutual: true };
+        }
+
+        // Check if we already have an accepted row for them
+        const { data: ourRow } = await supabase
+          .from('friends')
+          .select('id, status')
+          .eq('user_id', user.id)
+          .eq('friend_connect_code', connectCode)
+          .single();
+
+        if (ourRow?.status === 'accepted') {
           return { ok: true, mutual: true };
         }
       }
