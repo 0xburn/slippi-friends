@@ -28,6 +28,7 @@ nsis:
   oneClick: true
   perMachine: false
   allowToChangeInstallationDirectory: false
+  artifactName: "SlippiFriends-Setup-${version}.${ext}"
 
 portable:
   artifactName: "SlippiFriends-${version}-portable.exe"
