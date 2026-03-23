@@ -11,7 +11,7 @@ export function LandingCTAs() {
     await supabase.auth.signInWithOAuth({
       provider: 'discord',
       options: {
-        redirectTo: `${origin}/friendlies/auth/callback?next=/friends`,
+        redirectTo: `${origin}/auth/callback?next=/friends`,
       },
     });
   }
