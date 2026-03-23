@@ -19,7 +19,7 @@ export function initAutoUpdater(win: BrowserWindow): void {
   const send = (status: UpdateStatus) => {
     if (sender) sender(status);
     try {
-      win.webContents.send('updater:status', status);
+      if (!win.isDestroyed()) win.webContents.send('updater:status', status);
     } catch {}
   };
 

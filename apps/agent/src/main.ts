@@ -261,7 +261,7 @@ if (!isDev && !app.requestSingleInstanceLock()) {
   app.on('second-instance', (_e, argv) => {
     const url = findProtocolUrl(argv);
     if (url) void handleDeepLink(url);
-    if (mainWindow) { mainWindow.show(); mainWindow.focus(); }
+    if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.show(); mainWindow.focus(); }
   });
 }
 
