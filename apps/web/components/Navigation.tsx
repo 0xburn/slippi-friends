@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -47,7 +48,7 @@ export function Navigation() {
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2">
-              <img src="/logo.png" alt="" className="w-8 h-8 rounded-lg" />
+              <Image src="/logo.png" alt="" width={32} height={32} className="rounded-lg" />
               <span className="font-display font-bold text-lg tracking-tight text-white hidden sm:block">
                 friendlies
               </span>
