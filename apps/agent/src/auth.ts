@@ -1,5 +1,6 @@
+import { exec } from 'child_process';
 import { User } from '@supabase/supabase-js';
-import { shell } from 'electron';
+import { clipboard, shell } from 'electron';
 
 const Store = require('electron-store');
 
@@ -22,14 +23,36 @@ function getAuthorizeUrl(): string {
   return u.toString();
 }
 
-export async function startAuthFlow(): Promise<void> {
+export async function startAuthFlow(): Promise<string> {
+  const url = getAuthorizeUrl();
+  console.log('startAuthFlow opening:', url);
+
   try {
-    const url = getAuthorizeUrl();
-    console.log('startAuthFlow opening:', url);
     await shell.openExternal(url);
+    return url;
   } catch (e) {
-    console.error('startAuthFlow failed', e);
+    console.error('shell.openExternal failed, trying platform fallback', e);
   }
+
+  // Windows fallback — shell.openExternal can silently fail
+  if (process.platform === 'win32') {
+    try {
+      await new Promise<void>((resolve, reject) => {
+        exec(`start "" "${url}"`, (err) => (err ? reject(err) : resolve()));
+      });
+      return url;
+    } catch (e) {
+      console.error('Windows start command failed', e);
+    }
+  }
+
+  // Last resort: copy URL to clipboard so user can paste manually
+  try {
+    clipboard.writeText(url);
+    console.log('Auth URL copied to clipboard as last resort');
+  } catch {}
+
+  return url;
 }
 
 export async function handleAuthCallback(url: string): Promise<void> {

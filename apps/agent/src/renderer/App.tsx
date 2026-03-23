@@ -68,6 +68,7 @@ function SlippiNotFound() {
 
 function AuthPrompt({ connectCode, displayName }: { connectCode: string; displayName: string }) {
   const [waiting, setWaiting] = useState(false);
+  const [authUrl, setAuthUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const unsub = window.api.onAuthChanged((user) => {
@@ -76,13 +77,23 @@ function AuthPrompt({ connectCode, displayName }: { connectCode: string; display
     return unsub;
   }, []);
 
+  async function handleAuth() {
+    setWaiting(true);
+    try {
+      const url = await window.api.startAuth();
+      if (url) setAuthUrl(url);
+    } catch {
+      setWaiting(false);
+    }
+  }
+
   return (
     <div className="flex items-center justify-center min-h-screen">
       <div className="w-full max-w-md px-8">
         <div className="fixed top-0 left-0 right-0 h-[52px] drag" />
         <div className="text-center space-y-6">
           <div className="flex flex-col items-center gap-3">
-            <img src="./logo.png" alt="L7" className="w-16 h-16" />
+            <img src="./logo.png" alt="L7" className="w-16 h-16 rounded-2xl" />
             <h1 className="text-3xl font-display font-bold">
               Slippi <span className="text-[#21BA45]">Friends</span>
             </h1>
@@ -98,16 +109,43 @@ function AuthPrompt({ connectCode, displayName }: { connectCode: string; display
             and show your online status. You only need to do this once.
           </p>
           <button
-            onClick={() => { setWaiting(true); window.api.startAuth(); }}
+            onClick={handleAuth}
             disabled={waiting}
             className="w-full rounded-xl bg-[#5865F2] px-6 py-3.5 font-semibold text-white transition-all hover:bg-[#4752C4] disabled:opacity-70"
           >
             {waiting ? 'Waiting for Discord...' : 'Link Discord Account'}
           </button>
           {waiting && (
-            <p className="text-xs text-gray-500 animate-pulse">
-              Complete sign-in in your browser, then return here.
-            </p>
+            <div className="space-y-3">
+              <p className="text-xs text-gray-500 animate-pulse">
+                Complete sign-in in your browser, then return here.
+              </p>
+              {authUrl && (
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-500">
+                    Browser didn't open?{' '}
+                    <button
+                      onClick={() => window.api.openExternal(authUrl)}
+                      className="text-[#21BA45] hover:underline"
+                    >
+                      Click here to open manually
+                    </button>
+                  </p>
+                  <button
+                    onClick={() => { window.api.copyToClipboard(authUrl); }}
+                    className="text-xs text-gray-600 hover:text-gray-400"
+                  >
+                    Or copy link to clipboard
+                  </button>
+                </div>
+              )}
+              <button
+                onClick={() => { setWaiting(false); setAuthUrl(null); }}
+                className="text-xs text-gray-600 hover:text-gray-400"
+              >
+                Try again
+              </button>
+            </div>
           )}
         </div>
       </div>

@@ -18,7 +18,7 @@ export function sendToRenderer(channel: string, ...args: any[]): void {
 export function registerIpcHandlers(win: BrowserWindow): void {
   mainWindow = win;
 
-  ipcMain.handle('auth:start', () => { startAuthFlow(); });
+  ipcMain.handle('auth:start', () => startAuthFlow());
   ipcMain.handle('auth:getUser', async () => {
     try { return await getCurrentUser(); } catch { return null; }
   });
