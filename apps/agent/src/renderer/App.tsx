@@ -30,7 +30,7 @@ function SlippiNotFound() {
         <div className="fixed top-0 left-0 right-0 h-[52px] drag" />
         <div className="text-center space-y-6">
           <div className="flex flex-col items-center gap-3">
-            <img src="/logo.png" alt="L7" className="w-16 h-16" />
+            <img src="./logo.png" alt="L7" className="w-16 h-16" />
             <h1 className="text-3xl font-display font-bold">
               Slippi <span className="text-[#21BA45]">Friends</span>
             </h1>
@@ -82,7 +82,7 @@ function AuthPrompt({ connectCode, displayName }: { connectCode: string; display
         <div className="fixed top-0 left-0 right-0 h-[52px] drag" />
         <div className="text-center space-y-6">
           <div className="flex flex-col items-center gap-3">
-            <img src="/logo.png" alt="L7" className="w-16 h-16" />
+            <img src="./logo.png" alt="L7" className="w-16 h-16" />
             <h1 className="text-3xl font-display font-bold">
               Slippi <span className="text-[#21BA45]">Friends</span>
             </h1>
@@ -148,7 +148,7 @@ export function App() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="fixed top-0 left-0 right-0 h-[52px] drag" />
-        <img src="/logo.png" alt="L7" className="w-20 h-20 animate-pulse" />
+        <img src="./logo.png" alt="L7" className="w-20 h-20 animate-pulse" />
       </div>
     );
   }

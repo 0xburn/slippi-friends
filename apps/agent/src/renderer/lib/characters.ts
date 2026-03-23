@@ -47,7 +47,7 @@ const SLIPPI_ID_TO_ALPHA: Record<number, number> = {
 export function getCharacterImagePath(id: number): string {
   const alphaId = SLIPPI_ID_TO_ALPHA[id];
   if (alphaId == null) return '';
-  return `/characters/A${alphaId}.png`;
+  return `./characters/A${alphaId}.png`;
 }
 
 export function getCharacterName(id: number): string { return CHARACTER_MAP[id] ?? 'Unknown'; }
