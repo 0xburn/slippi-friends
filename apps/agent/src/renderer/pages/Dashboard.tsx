@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { OnlineIndicator } from '../components/OnlineIndicator';
 import { RankBadge } from '../components/RankBadge';
 import { CharacterIcon } from '../components/CharacterIcon';
@@ -38,25 +38,16 @@ export function Dashboard() {
   const [opponentCode, setOpponentCode] = useState<string | null>(null);
   const [playingSince, setPlayingSince] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const identityRef = useRef<IdentityData | null>(null);
 
   useEffect(() => {
-    window.api.getIdentity().then((id) => {
-      setIdentity(id);
-      identityRef.current = id;
-    });
+    window.api.getIdentity().then(setIdentity);
     window.api.getProfile().then(setProfile);
     window.api.getUser().then(setUser);
 
-    const unsub = window.api.onPresenceUpdate((users) => {
-      const myCode = identityRef.current?.connectCode;
-      if (!myCode) return;
-      const me = users.find((u: any) => u.connectCode === myCode);
-      if (me) {
-        setStatus(me.status || 'online');
-        setOpponentCode(me.opponentCode ?? null);
-        setPlayingSince(me.playingSince ?? null);
-      }
+    const unsub = window.api.onLocalStatus((info: any) => {
+      setStatus(info.status || 'online');
+      setOpponentCode(info.opponentCode ?? null);
+      setPlayingSince(info.playingSince ?? null);
     });
     return unsub;
   }, []);

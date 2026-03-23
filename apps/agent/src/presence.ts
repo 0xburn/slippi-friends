@@ -29,7 +29,14 @@ export interface OnlineUser {
   updatedAt: string;
 }
 
+export interface LocalStatus {
+  status: PresenceStatus;
+  opponentCode: string | null;
+  playingSince: string | null;
+}
+
 type PresenceSyncCallback = (users: OnlineUser[]) => void;
+type LocalStatusCallback = (info: LocalStatus) => void;
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let presenceChannel: RealtimeChannel | null = null;
@@ -44,6 +51,8 @@ let loopUserId = '';
 let replayDirForPoll = '';
 let onlineUsers: OnlineUser[] = [];
 let syncCallbacks: PresenceSyncCallback[] = [];
+let localStatusCallbacks: LocalStatusCallback[] = [];
+let channelRetryTimer: ReturnType<typeof setTimeout> | null = null;
 
 export function setLastPlayedCharacterId(id: number | null): void {
   lastCharacterId = id;
@@ -71,9 +80,26 @@ export function onPresenceSync(cb: PresenceSyncCallback): () => void {
   return () => { syncCallbacks = syncCallbacks.filter((c) => c !== cb); };
 }
 
+export function onLocalStatusChange(cb: LocalStatusCallback): () => void {
+  localStatusCallbacks.push(cb);
+  return () => { localStatusCallbacks = localStatusCallbacks.filter((c) => c !== cb); };
+}
+
 function emitPresenceSync(): void {
   for (const cb of syncCallbacks) {
     try { cb(onlineUsers); } catch (e) { console.error('presenceSyncCallback', e); }
+  }
+}
+
+function emitLocalStatus(): void {
+  const opponent = currentStatus === 'in-game' ? getRecentOpponent() : null;
+  const info: LocalStatus = {
+    status: currentStatus,
+    opponentCode: opponent?.code ?? null,
+    playingSince: opponent?.since ?? null,
+  };
+  for (const cb of localStatusCallbacks) {
+    try { cb(info); } catch (e) { console.error('localStatusCallback', e); }
   }
 }
 
@@ -262,6 +288,17 @@ async function subscribeChannel(connectCode: string): Promise<boolean> {
   }
 }
 
+function scheduleChannelRetry(): void {
+  if (channelRetryTimer) return;
+  channelRetryTimer = setTimeout(async () => {
+    channelRetryTimer = null;
+    if (subscribed || !loopConnectCode) return;
+    console.log('[presence] Retrying channel subscription...');
+    const ok = await subscribeChannel(loopConnectCode);
+    if (!ok) scheduleChannelRetry();
+  }, 30_000);
+}
+
 export async function startPresenceLoop(
   connectCode: string,
   displayName: string,
@@ -274,7 +311,9 @@ export async function startPresenceLoop(
     loopDisplayName = displayName;
     loopUserId = userId;
     replayDirForPoll = replayDir;
-    await subscribeChannel(connectCode);
+
+    const channelOk = await subscribeChannel(connectCode);
+    if (!channelOk) scheduleChannelRetry();
 
     const tick = async () => {
       try {
@@ -282,12 +321,14 @@ export async function startPresenceLoop(
         const replayHot = await hasRecentReplayActivity(replayDirForPoll);
         const next = resolvePresenceStatus(dolphinRunning, replayHot);
         currentStatus = next;
+        emitLocalStatus();
         await pushPresence(
           next,
           loopConnectCode,
           loopDisplayName,
           loopUserId,
         );
+        if (!subscribed) scheduleChannelRetry();
       } catch (e) {
         console.error('presence tick failed', e);
       }
@@ -302,6 +343,10 @@ export async function startPresenceLoop(
 
 export async function stopPresenceLoop(): Promise<void> {
   try {
+    if (channelRetryTimer) {
+      clearTimeout(channelRetryTimer);
+      channelRetryTimer = null;
+    }
     if (pollTimer) {
       clearInterval(pollTimer);
       pollTimer = null;

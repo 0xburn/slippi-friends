@@ -2,7 +2,7 @@ import { BrowserWindow, clipboard, dialog, ipcMain, shell } from 'electron';
 
 import { getCurrentUser, isAuthenticated, logout, startAuthFlow } from './auth';
 import { getIdentity, verifyIdentity } from './identity';
-import { getOnlineUsers, onPresenceSync } from './presence';
+import { getOnlineUsers, onLocalStatusChange, onPresenceSync } from './presence';
 import { getSettings, isSetupComplete, updateSettings, type AgentSettings } from './settings';
 import { supabase } from './supabase';
 import { checkForUpdates, downloadUpdate, quitAndInstall } from './updater';
@@ -300,6 +300,7 @@ export function registerIpcHandlers(win: BrowserWindow): void {
   ipcMain.handle('presence:online', () => getOnlineUsers());
 
   onPresenceSync((users) => { sendToRenderer('presence:updated', users); });
+  onLocalStatusChange((info) => { sendToRenderer('presence:localStatus', info); });
 
   ipcMain.handle('settings:get', () => getSettings());
   ipcMain.handle('settings:update', (_e, partial: Partial<AgentSettings>) => {
