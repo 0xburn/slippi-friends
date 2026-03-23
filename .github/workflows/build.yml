@@ -74,6 +74,8 @@ jobs:
             apps/agent/release/*.exe
             apps/agent/release/*.AppImage
             apps/agent/release/*.deb
+            apps/agent/release/*.yml
+            apps/agent/release/*.yaml
           if-no-files-found: ignore
 
   release:
@@ -106,7 +108,7 @@ jobs:
           tag_name: ${{ steps.version.outputs.tag }}
           name: Slippi Friends ${{ steps.version.outputs.tag }}
           draft: false
-          prerelease: true
+          prerelease: false
           generate_release_notes: true
           files: |
             artifacts/**/*.dmg
@@ -114,3 +116,5 @@ jobs:
             artifacts/**/*.exe
             artifacts/**/*.AppImage
             artifacts/**/*.deb
+            artifacts/**/*.yml
+            artifacts/**/*.yaml

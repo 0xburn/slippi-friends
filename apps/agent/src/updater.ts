@@ -14,6 +14,7 @@ let sender: ((status: UpdateStatus) => void) | null = null;
 export function initAutoUpdater(win: BrowserWindow): void {
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.allowPrerelease = true;
 
   const send = (status: UpdateStatus) => {
     if (sender) sender(status);
