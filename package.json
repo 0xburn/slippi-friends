@@ -20,6 +20,7 @@
     "npm": ">=9.0.0"
   },
   "dependencies": {
+    "7zip-bin": "^5.2.0",
     "app-builder-bin": "^4.0.0",
     "pg": "^8.20.0"
   }
