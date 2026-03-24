@@ -26,6 +26,17 @@ export function Navigation() {
           </a>
           <div className="flex items-center gap-4">
             <a
+              href="https://www.patreon.com/cw/Lucky7sMelee"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-500 hover:text-white transition-colors"
+              aria-label="Patreon"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M14.82 2.41c3.96 0 7.18 3.24 7.18 7.21 0 3.96-3.22 7.18-7.18 7.18-3.97 0-7.21-3.22-7.21-7.18 0-3.97 3.24-7.21 7.21-7.21M2 21.6h3.5V2.41H2V21.6z" />
+              </svg>
+            </a>
+            <a
               href="https://discord.gg/m4C8udH9Yx"
               target="_blank"
               rel="noopener noreferrer"
