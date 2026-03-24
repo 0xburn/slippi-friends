@@ -97,16 +97,19 @@ export function Friends() {
     );
 
     const unsub = window.api.onPresenceUpdate((users) => {
-      const map: Record<string, { status: string; opponentCode?: string; currentCharacter?: number | null; playingSince?: string }> = {};
-      users.forEach((u: any) => {
-        map[u.connectCode] = {
-          status: u.status,
-          opponentCode: u.opponentCode ?? undefined,
-          currentCharacter: u.currentCharacter ?? null,
-          playingSince: u.playingSince ?? undefined,
-        };
+      setOnlineMap((prev) => {
+        const next = { ...prev };
+        users.forEach((u: any) => {
+          next[u.connectCode] = {
+            status: u.status,
+            opponentCode: u.opponentCode ?? undefined,
+            currentCharacter: u.currentCharacter ?? null,
+            playingSince: u.playingSince ?? undefined,
+            lookingToPlay: prev[u.connectCode]?.lookingToPlay,
+          };
+        });
+        return next;
       });
-      setOnlineMap((prev) => ({ ...prev, ...map }));
     });
 
     const unsubStatus = window.api.onLocalStatus((info: any) => {
