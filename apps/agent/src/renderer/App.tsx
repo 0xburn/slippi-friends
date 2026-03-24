@@ -72,7 +72,10 @@ function AuthPrompt({ connectCode, displayName }: { connectCode: string; display
   const [waiting, setWaiting] = useState(false);
   const [authUrl, setAuthUrl] = useState<string | null>(null);
   const [manualUrl, setManualUrl] = useState('');
-  const [showManual, setShowManual] = useState(false);
+  const [manualError, setManualError] = useState('');
+  const [manualSuccess, setManualSuccess] = useState(false);
+  const isLinux = navigator.platform.toLowerCase().includes('linux');
+  const [showManual, setShowManual] = useState(isLinux);
 
   useEffect(() => {
     const unsub = window.api.onAuthChanged((user) => {
@@ -93,11 +96,25 @@ function AuthPrompt({ connectCode, displayName }: { connectCode: string; display
 
   async function handleManualPaste() {
     const url = manualUrl.trim();
-    if (!url.includes('auth-callback')) return;
+    setManualError('');
+    if (!url) return;
+
+    if (!url.includes('access_token') && !url.includes('auth-callback')) {
+      setManualError('This doesn\'t look like the right URL. Look for a URL starting with slippi-friends://auth-callback in your browser address bar.');
+      return;
+    }
+
     try {
-      await (window.api as any).handleAuthCallback(url);
-    } catch {
-      window.location.reload();
+      await window.api.handleAuthCallback(url);
+      setManualSuccess(true);
+      setTimeout(() => window.location.reload(), 500);
+    } catch (e: any) {
+      const msg = e?.message || String(e);
+      if (msg.includes('Missing tokens')) {
+        setManualError('URL is missing authentication tokens. Make sure you copied the full URL including everything after the # symbol.');
+      } else {
+        setManualError(`Auth failed: ${msg}. Try clicking "Link Discord Account" again.`);
+      }
     }
   }
 
@@ -153,38 +170,52 @@ function AuthPrompt({ connectCode, displayName }: { connectCode: string; display
                   </button>
                 </div>
               )}
-              <button
-                onClick={() => setShowManual(!showManual)}
-                className="text-xs text-gray-600 hover:text-gray-400"
-              >
-                {showManual ? 'Hide manual link entry' : 'Browser redirect not working? Paste link manually'}
-              </button>
+              {!showManual && (
+                <button
+                  onClick={() => setShowManual(true)}
+                  className="text-xs text-gray-600 hover:text-gray-400"
+                >
+                  Browser redirect not working? Paste link manually
+                </button>
+              )}
               {showManual && (
-                <div className="space-y-2">
-                  <p className="text-[10px] text-gray-500 text-left">
-                    Copy the <code className="text-gray-400">slippi-friends://auth-callback...</code> URL from your browser and paste it here:
+                <div className="rounded-lg border border-[#2a2a2a] bg-[#111] p-3 space-y-2 text-left">
+                  <p className="text-[11px] text-gray-400">
+                    After authorizing in Discord, your browser will try to open a
+                    {' '}<code className="text-gray-300">slippi-friends://</code> link.
+                    If nothing happens, copy the <strong className="text-white">full URL</strong> from
+                    your browser's address bar and paste it below.
                   </p>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={manualUrl}
-                      onChange={(e) => setManualUrl(e.target.value)}
-                      placeholder="slippi-friends://auth-callback#..."
-                      className="flex-1 rounded-lg border border-[#2a2a2a] bg-[#0a0a0a] px-3 py-2 text-xs font-mono text-white placeholder-gray-600 focus:outline-none focus:border-[#21BA45]/50"
-                    />
-                    <button
-                      onClick={handleManualPaste}
-                      disabled={!manualUrl.includes('auth-callback')}
-                      className="shrink-0 rounded-lg bg-[#21BA45] px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
-                    >
-                      Submit
-                    </button>
-                  </div>
+                  {manualSuccess ? (
+                    <p className="text-xs text-[#21BA45] font-medium py-1">Authenticated — loading...</p>
+                  ) : (
+                    <>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={manualUrl}
+                          onChange={(e) => { setManualUrl(e.target.value); setManualError(''); }}
+                          placeholder="slippi-friends://auth-callback#..."
+                          className="flex-1 rounded-lg border border-[#2a2a2a] bg-[#0a0a0a] px-3 py-2 text-xs font-mono text-white placeholder-gray-600 focus:outline-none focus:border-[#21BA45]/50"
+                        />
+                        <button
+                          onClick={handleManualPaste}
+                          disabled={!manualUrl.trim()}
+                          className="shrink-0 rounded-lg bg-[#21BA45] px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
+                        >
+                          Submit
+                        </button>
+                      </div>
+                      {manualError && (
+                        <p className="text-[11px] text-red-400">{manualError}</p>
+                      )}
+                    </>
+                  )}
                 </div>
               )}
               <button
-                onClick={() => { setWaiting(false); setAuthUrl(null); setShowManual(false); }}
-                className="text-xs text-gray-600 hover:text-gray-400"
+                onClick={() => { setWaiting(false); setAuthUrl(null); setShowManual(isLinux); }}
+                className="text-xs text-gray-600 hover:text-gray-400 block"
               >
                 Try again
               </button>

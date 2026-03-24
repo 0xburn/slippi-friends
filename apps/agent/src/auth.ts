@@ -66,16 +66,28 @@ export async function startAuthFlow(): Promise<string> {
 
 export async function handleAuthCallback(url: string): Promise<void> {
   try {
-    const parsed = new URL(url);
-    const fragment = parsed.hash?.startsWith('#')
-      ? parsed.hash.slice(1)
-      : '';
-    const search = parsed.search?.startsWith('?')
-      ? parsed.search.slice(1)
-      : '';
-    const params = new URLSearchParams(fragment || search);
-    const accessToken = params.get('access_token');
-    const refreshToken = params.get('refresh_token');
+    let accessToken: string | null = null;
+    let refreshToken: string | null = null;
+
+    try {
+      const parsed = new URL(url);
+      const fragment = parsed.hash?.startsWith('#') ? parsed.hash.slice(1) : '';
+      const search = parsed.search?.startsWith('?') ? parsed.search.slice(1) : '';
+      const params = new URLSearchParams(fragment || search);
+      accessToken = params.get('access_token');
+      refreshToken = params.get('refresh_token');
+    } catch {
+      // URL constructor failed — try parsing raw string for tokens
+    }
+
+    if (!accessToken || !refreshToken) {
+      const hashIdx = url.indexOf('#');
+      const raw = hashIdx !== -1 ? url.slice(hashIdx + 1) : url;
+      const fallback = new URLSearchParams(raw);
+      accessToken = accessToken || fallback.get('access_token');
+      refreshToken = refreshToken || fallback.get('refresh_token');
+    }
+
     if (!accessToken || !refreshToken) {
       throw new Error('Missing tokens in auth callback URL');
     }

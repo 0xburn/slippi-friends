@@ -180,6 +180,11 @@ export function Friends() {
     });
   }, [friends, onlineMap]);
 
+  const totalAccepted = useMemo(
+    () => enriched.filter((f) => f.friendStatus === 'accepted').length,
+    [enriched]
+  );
+
   const { accepted, pendingOut } = useMemo(() => {
     const q = search.toLowerCase();
     let list = q
@@ -216,6 +221,10 @@ export function Friends() {
   async function handleAdd() {
     const code = addCode.trim().toUpperCase();
     if (!code) return;
+    if (!code.includes('#')) {
+      setAddError('Connect codes must include # (e.g. ABCD#123)');
+      return;
+    }
     setAddLoading(true);
     setAddError('');
     const result = await window.api.addFriend(code);
@@ -476,7 +485,7 @@ export function Friends() {
       )}
 
       {/* Search (only show when there are accepted friends) */}
-      {accepted.length > 3 && (
+      {totalAccepted > 3 && (
         <input
           type="text"
           value={search}
