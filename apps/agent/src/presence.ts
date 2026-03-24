@@ -4,6 +4,7 @@ import {
   DOLPHIN_PROCESS_NAMES,
   OPPONENT_RECENT_THRESHOLD,
   PRESENCE_POLL_INTERVAL,
+  PRESENCE_STALE_THRESHOLD,
   SLIPPI_LAUNCHER_PROCESS_NAMES,
 } from './config';
 import {
@@ -71,6 +72,8 @@ let lastPushedCharacter: number | null = null;
 let lastPushedOpponentCode: string | null = null;
 let lastDbWriteTime = 0;
 const DB_HEARTBEAT_INTERVAL = 150_000;
+let lastStaleCleanup = 0;
+const STALE_CLEANUP_INTERVAL = 5 * 60 * 1000;
 
 let lookingToPlay = false;
 let lookingToPlaySince: string | null = null;
@@ -460,6 +463,21 @@ export async function startPresenceLoop(
           lookingToPlaySince = null;
           lastDbWriteTime = 0;
         }
+
+        const now = Date.now();
+        if (now - lastStaleCleanup >= STALE_CLEANUP_INTERVAL) {
+          lastStaleCleanup = now;
+          const cutoff = new Date(now - PRESENCE_STALE_THRESHOLD).toISOString();
+          supabase.from('presence_log')
+            .update({ status: 'offline', looking_to_play: false, looking_to_play_since: null })
+            .in('status', ['online', 'in-game'])
+            .lt('updated_at', cutoff)
+            .then(({ error }) => {
+              if (error) console.warn('[presence] stale cleanup failed:', error.message);
+              else console.log('[presence] stale cleanup ran');
+            });
+        }
+
         const launcherRunning = await isProcessRunning(SLIPPI_LAUNCHER_PROCESS_NAMES);
         const dolphinRunning = await isProcessRunning(DOLPHIN_PROCESS_NAMES);
         const next = resolvePresenceStatus(launcherRunning, dolphinRunning);
