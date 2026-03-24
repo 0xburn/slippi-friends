@@ -3,15 +3,14 @@
 import { createClient } from '@/lib/supabase/client';
 
 export function LandingCTAs() {
-  const origin =
-    typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_APP_URL ?? '';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
 
   async function signInDiscord() {
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
       provider: 'discord',
       options: {
-        redirectTo: `${origin}/auth/callback?next=/friends`,
+        redirectTo: `${appUrl}/auth/callback?next=/friends`,
       },
     });
   }

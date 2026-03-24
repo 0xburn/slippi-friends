@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 
 const IMG_PREFIX = process.env.NEXT_PUBLIC_ASSET_PREFIX || '';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || '';
 
 export function Navigation() {
   const pathname = usePathname();
@@ -27,7 +28,7 @@ export function Navigation() {
   const handleSignIn = async () => {
     await supabase.auth.signInWithOAuth({
       provider: 'discord',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: `${APP_URL || window.location.origin}/auth/callback` },
     });
   };
 
