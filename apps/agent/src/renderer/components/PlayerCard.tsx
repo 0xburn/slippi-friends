@@ -83,7 +83,7 @@ export function PlayerCard({ player, showStatus = true, expandable = true, onCli
                 onClick={(e) => {
                   e.stopPropagation();
                   if (player.discordId) {
-                    window.api.openExternal(`discord://users/${player.discordId}`).catch(() =>
+                    window.api.openExternal(`discord://-/users/${player.discordId}`).catch(() =>
                       window.api.openExternal(`https://discord.com/users/${player.discordId}`)
                     );
                   }
