@@ -77,26 +77,29 @@ export default async function HomePage() {
       </section>
 
       {/* Setup steps */}
-      <section className="mx-auto mt-14 max-w-3xl">
-        <div className="flex items-start justify-between">
-          {[
-            { n: '1', label: 'Install friendlies', desc: 'Download the app above and run it.' },
-            { n: '2', label: 'Sync with Discord', desc: 'Sign in to link your Slippi tag.' },
-            { n: '3', label: 'Play!', desc: 'See who\u2019s online and start playing.' },
-          ].map((step, i) => (
-            <div key={step.n} className="flex items-start flex-1">
-              <div className="flex flex-col items-center text-center w-full">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#21BA45]/40 text-sm font-mono font-semibold text-[#21BA45]">
-                  {step.n}
-                </span>
-                <p className="mt-3 text-sm font-medium text-white">{step.label}</p>
-                <p className="mt-1 text-xs text-gray-500">{step.desc}</p>
-              </div>
-              {i < 2 && (
-                <span className="hidden sm:block h-px w-full bg-[#2a2a2a] mt-4 shrink-0" />
-              )}
-            </div>
-          ))}
+      <section className="mx-auto mt-14 max-w-2xl px-4">
+        {/* Circles + connectors */}
+        <div className="flex items-center">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#21BA45]/40 text-sm font-mono font-semibold text-[#21BA45]">1</span>
+          <span className="flex-1 h-px bg-[#2a2a2a]" />
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#21BA45]/40 text-sm font-mono font-semibold text-[#21BA45]">2</span>
+          <span className="flex-1 h-px bg-[#2a2a2a]" />
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#21BA45]/40 text-sm font-mono font-semibold text-[#21BA45]">3</span>
+        </div>
+        {/* Labels */}
+        <div className="mt-4 grid grid-cols-3 text-center">
+          <div>
+            <p className="text-sm font-medium text-white">Install friendlies</p>
+            <p className="mt-1 text-xs text-gray-500">Download the app above and run it.</p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-white">Sync with Discord</p>
+            <p className="mt-1 text-xs text-gray-500">Sign in to link your Slippi tag.</p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-white">Play!</p>
+            <p className="mt-1 text-xs text-gray-500">See who&apos;s online and start playing.</p>
+          </div>
         </div>
       </section>
 
