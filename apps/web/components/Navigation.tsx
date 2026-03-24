@@ -28,7 +28,7 @@ export function Navigation() {
   const handleSignIn = async () => {
     await supabase.auth.signInWithOAuth({
       provider: 'discord',
-      options: { redirectTo: `${APP_URL || window.location.origin}/auth/callback` },
+      options: { redirectTo: `${APP_URL || window.location.origin}/auth/callback?return_to=${encodeURIComponent(window.location.origin)}` },
     });
   };
 
