@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import { Analytics } from '@vercel/analytics/next';
 import './globals.css';
 import { Navigation } from '@/components/Navigation';
 import { PresenceProvider } from '@/components/PresenceProvider';
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             {children}
           </main>
         </PresenceProvider>
+        <Analytics />
       </body>
     </html>
   );
