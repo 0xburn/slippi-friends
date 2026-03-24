@@ -24,6 +24,7 @@ let friendPollTimer: ReturnType<typeof setInterval> | null = null;
 let serviceStartedAt: string | null = null;
 let firstPollDone = false;
 let refreshLock = false;
+let activeServiceKey: string | null = null;
 const previousFriendStatuses = new Map<string, string>();
 const knownIncomingRequestIds = new Set<string>();
 const knownPlayInviteIds = new Set<string>();
@@ -100,6 +101,7 @@ async function stopAgentServices(): Promise<void> {
   if (friendPollTimer) { clearInterval(friendPollTimer); friendPollTimer = null; }
   serviceStartedAt = null;
   firstPollDone = false;
+  activeServiceKey = null;
   previousFriendStatuses.clear();
   knownIncomingRequestIds.clear();
   knownPlayInviteIds.clear();
@@ -226,7 +228,13 @@ async function pollPlayInvites(userId: string): Promise<void> {
 }
 
 async function startAgentServices(identity: SlippiIdentity, userId: string): Promise<void> {
+  const key = `${userId}:${identity.connectCode}`;
+  if (activeServiceKey === key) {
+    console.log('[main] services already running for', identity.connectCode, '— skipping restart');
+    return;
+  }
   await stopAgentServices();
+  activeServiceKey = key;
   serviceStartedAt = new Date().toISOString();
   const st = getSettings();
 
