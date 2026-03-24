@@ -20,8 +20,8 @@ Every release MUST update the version in ALL THREE locations:
 git add -A
 git commit -m "description of changes, bump to vX.Y.Z"
 
-# 2. Push to main
-git push origin main
+# 2. Push to master (default branch is master, NOT main)
+git push origin master
 
 # 3. Create and push the tag (triggers GitHub Actions build)
 git tag vX.Y.Z

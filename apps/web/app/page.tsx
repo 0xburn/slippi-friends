@@ -51,9 +51,8 @@ export default async function HomePage() {
           <h1 className="font-display text-4xl font-bold tracking-tight text-white sm:text-5xl">
             friendlies
           </h1>
-          <p className="mt-4 text-lg text-gray-400">
-            friends lists for Melee
-            <br className="hidden sm:block" />
+          <p className="mt-4 text-lg text-gray-400 px-4">
+            friends lists for Melee &mdash;{' '}
             see who&apos;s online, manage your friend list, and find new practice partners!
           </p>
 
@@ -81,7 +80,8 @@ export default async function HomePage() {
 
       {/* Setup steps */}
       <section className="mx-auto mt-14 max-w-3xl px-4">
-        <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-start gap-y-4">
+        {/* Horizontal on sm+, stacked on mobile */}
+        <div className="hidden sm:grid grid-cols-[1fr_auto_1fr_auto_1fr] items-start gap-y-4">
           <div className="flex flex-col items-center text-center px-2">
             <span className="flex h-8 w-8 items-center justify-center rounded-full border border-[#21BA45]/40 text-sm font-mono font-semibold text-[#21BA45]">1</span>
             <p className="mt-3 text-sm font-medium text-white">Install friendlies</p>
@@ -99,6 +99,22 @@ export default async function HomePage() {
             <p className="mt-3 text-sm font-medium text-white">Play!</p>
             <p className="mt-1 text-xs text-gray-500">See who&apos;s online and start playing.</p>
           </div>
+        </div>
+        {/* Stacked on mobile */}
+        <div className="flex flex-col gap-6 sm:hidden">
+          {[
+            { n: '1', title: 'Install friendlies', desc: 'Download the app and run it.' },
+            { n: '2', title: 'Sync with Discord', desc: 'Sign in to link your Slippi tag.' },
+            { n: '3', title: 'Play!', desc: 'See who\u2019s online and start playing.' },
+          ].map((s) => (
+            <div key={s.n} className="flex items-start gap-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#21BA45]/40 text-sm font-mono font-semibold text-[#21BA45]">{s.n}</span>
+              <div>
+                <p className="text-sm font-medium text-white">{s.title}</p>
+                <p className="mt-0.5 text-xs text-gray-500">{s.desc}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
