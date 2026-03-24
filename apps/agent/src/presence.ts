@@ -57,6 +57,7 @@ const MAX_CHANNEL_RETRIES = 5;
 const BASE_RETRY_DELAY = 10_000;
 let lastRlsWarning = 0;
 let periodicRetryTimer: ReturnType<typeof setInterval> | null = null;
+let subscribeGeneration = 0;
 
 let lastPushedStatus: PresenceStatus = 'offline';
 let lastPushedCharacter: number | null = null;
@@ -289,6 +290,9 @@ async function pushPresence(
 
 async function subscribeChannel(connectCode: string): Promise<boolean> {
   if (presenceChannel && subscribed) return true;
+
+  const gen = ++subscribeGeneration;
+
   if (presenceChannel) {
     try {
       await presenceChannel.unsubscribe();
@@ -299,7 +303,7 @@ async function subscribeChannel(connectCode: string): Promise<boolean> {
     subscribed = false;
   }
 
-  console.log('[presence] Creating Realtime channel for', connectCode);
+  console.log('[presence] Creating Realtime channel for', connectCode, `(gen=${gen})`);
   console.log('[presence] WebSocket available:', typeof globalThis.WebSocket !== 'undefined');
 
   presenceChannel = supabase.channel('presence:global', {
@@ -317,13 +321,14 @@ async function subscribeChannel(connectCode: string): Promise<boolean> {
 
   try {
     await new Promise<void>((resolve, reject) => {
-      const t = setTimeout(
-        () => reject(new Error('presence subscribe timeout (10s)')),
-        10_000,
-      );
+      const t = setTimeout(() => {
+        if (gen !== subscribeGeneration) return;
+        reject(new Error('presence subscribe timeout (10s)'));
+      }, 10_000);
       console.log('[presence] Calling channel.subscribe()...');
       presenceChannel!.subscribe((status, err) => {
-        console.log('[presence] subscribe status:', status, err ? `error: ${err}` : '');
+        console.log('[presence] subscribe status:', status, err ? `error: ${err}` : '', `(gen=${gen}, current=${subscribeGeneration})`);
+        if (gen !== subscribeGeneration) { clearTimeout(t); return; }
         if (status === 'SUBSCRIBED') {
           clearTimeout(t);
           subscribed = true;
@@ -334,11 +339,16 @@ async function subscribeChannel(connectCode: string): Promise<boolean> {
         }
       });
     });
+    if (gen !== subscribeGeneration) return false;
     channelRetryCount = 0;
     presenceStats.realtimeConnected = true;
-    console.log('[presence] Realtime channel CONNECTED');
+    console.log('[presence] Realtime channel CONNECTED (gen=%d)', gen);
     return true;
   } catch (e: any) {
+    if (gen !== subscribeGeneration) {
+      console.log('[presence] Ignoring stale subscribe error (gen=%d, current=%d)', gen, subscribeGeneration);
+      return false;
+    }
     console.error('[presence] subscribeChannel failed:', e?.message ?? e);
     presenceStats.subscribeFail++;
     presenceStats.lastError = `subscribe: ${e?.message ?? e}`;
@@ -445,6 +455,7 @@ export async function startPresenceLoop(
 
 export async function stopPresenceLoop(): Promise<void> {
   try {
+    subscribeGeneration++;
     if (channelRetryTimer) {
       clearTimeout(channelRetryTimer);
       channelRetryTimer = null;
