@@ -1,4 +1,5 @@
 import { exec } from 'child_process';
+import { createServer, Server } from 'http';
 import { User } from '@supabase/supabase-js';
 import { clipboard, shell } from 'electron';
 
@@ -9,13 +10,18 @@ import { setSession, supabase, SUPABASE_URL_FALLBACK, SUPABASE_ANON_KEY_FALLBACK
 
 const TOKEN_KEY_ACCESS = 'supabase_access_token';
 const TOKEN_KEY_REFRESH = 'supabase_refresh_token';
+const LOCAL_AUTH_PORT = 18457;
 
 const authStore = new Store({ name: 'slippi-friends-auth' });
 
-function getAuthorizeUrl(): string {
+let localAuthServer: Server | null = null;
+
+function getAuthorizeUrl(useLocalCallback = false): string {
   const base = process.env.SUPABASE_URL || SUPABASE_URL_FALLBACK;
   const anon = process.env.SUPABASE_ANON_KEY || SUPABASE_ANON_KEY_FALLBACK;
-  const redirectTo = `${APP_PROTOCOL}://auth-callback`;
+  const redirectTo = useLocalCallback
+    ? `http://localhost:${LOCAL_AUTH_PORT}/auth-callback`
+    : `${APP_PROTOCOL}://auth-callback`;
   const u = new URL(`${base.replace(/\/$/, '')}/auth/v1/authorize`);
   u.searchParams.set('provider', 'discord');
   u.searchParams.set('redirect_to', redirectTo);
@@ -23,13 +29,93 @@ function getAuthorizeUrl(): string {
   return u.toString();
 }
 
-export async function startAuthFlow(): Promise<string> {
-  const url = getAuthorizeUrl();
-  console.log('startAuthFlow opening:', url);
+const CALLBACK_HTML = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>friendlies</title></head>
+<body style="background:#0a0a0a;color:#fff;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
+<div style="text-align:center">
+<div id="loading"><p style="color:#888">Authenticating...</p></div>
+<div id="done" style="display:none">
+<h2 style="color:#21BA45;margin-bottom:8px">&#10003; Authenticated</h2>
+<p style="color:#888;font-size:14px">You can close this tab and return to friendlies.</p>
+</div>
+</div>
+<script>
+const hash = window.location.hash.substring(1);
+if (hash && hash.includes('access_token')) {
+  fetch('/auth-complete', { method: 'POST', headers: {'Content-Type':'text/plain'}, body: hash })
+    .then(() => { document.getElementById('loading').style.display='none'; document.getElementById('done').style.display='block'; })
+    .catch(() => { document.getElementById('loading').innerHTML='<p style="color:#f87171">Something went wrong. Please try again.</p>'; });
+} else {
+  document.getElementById('loading').innerHTML='<p style="color:#f87171">No authentication data received. Please try again.</p>';
+}
+</script>
+</body></html>`;
 
+export function startLocalAuthServer(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (localAuthServer) {
+      try { localAuthServer.close(); } catch {}
+      localAuthServer = null;
+    }
+
+    const server = createServer((req, res) => {
+      if (req.url?.startsWith('/auth-callback')) {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(CALLBACK_HTML);
+      } else if (req.url === '/auth-complete' && req.method === 'POST') {
+        let body = '';
+        req.on('data', (c: Buffer) => { body += c.toString(); });
+        req.on('end', async () => {
+          res.writeHead(200, { 'Content-Type': 'text/plain' });
+          res.end('ok');
+          try {
+            const params = new URLSearchParams(body);
+            const accessToken = params.get('access_token');
+            const refreshToken = params.get('refresh_token');
+            if (!accessToken || !refreshToken) {
+              reject(new Error('Missing tokens from local auth callback'));
+              return;
+            }
+            await setSession(accessToken, refreshToken);
+            authStore.set(TOKEN_KEY_ACCESS, accessToken);
+            authStore.set(TOKEN_KEY_REFRESH, refreshToken);
+            resolve();
+          } catch (e) {
+            reject(e);
+          } finally {
+            setTimeout(() => { try { server.close(); } catch {} localAuthServer = null; }, 1000);
+          }
+        });
+      } else {
+        res.writeHead(404);
+        res.end();
+      }
+    });
+
+    localAuthServer = server;
+
+    server.listen(LOCAL_AUTH_PORT, '127.0.0.1', () => {
+      console.log(`[auth] Local auth server listening on port ${LOCAL_AUTH_PORT}`);
+    });
+
+    server.on('error', (err) => {
+      console.error('[auth] Local auth server error:', err);
+      localAuthServer = null;
+      reject(err);
+    });
+
+    setTimeout(() => {
+      try { server.close(); } catch {}
+      localAuthServer = null;
+      reject(new Error('Local auth server timed out after 5 minutes'));
+    }, 300_000);
+  });
+}
+
+async function openBrowser(url: string): Promise<void> {
   try {
     await shell.openExternal(url);
-    return url;
+    return;
   } catch (e) {
     console.error('shell.openExternal failed, trying platform fallback', e);
   }
@@ -39,7 +125,7 @@ export async function startAuthFlow(): Promise<string> {
       await new Promise<void>((resolve, reject) => {
         exec(`start "" "${url}"`, (err) => (err ? reject(err) : resolve()));
       });
-      return url;
+      return;
     } catch (e) {
       console.error('Windows start command failed', e);
     }
@@ -50,7 +136,7 @@ export async function startAuthFlow(): Promise<string> {
       await new Promise<void>((resolve, reject) => {
         exec(`xdg-open "${url}"`, (err) => (err ? reject(err) : resolve()));
       });
-      return url;
+      return;
     } catch (e) {
       console.error('xdg-open failed', e);
     }
@@ -60,7 +146,13 @@ export async function startAuthFlow(): Promise<string> {
     clipboard.writeText(url);
     console.log('Auth URL copied to clipboard as last resort');
   } catch {}
+}
 
+export async function startAuthFlow(): Promise<string> {
+  const useLocal = process.platform === 'linux';
+  const url = getAuthorizeUrl(useLocal);
+  console.log('startAuthFlow opening:', url, useLocal ? '(localhost callback)' : '(protocol handler)');
+  await openBrowser(url);
   return url;
 }
 

@@ -1,6 +1,6 @@
 import { BrowserWindow, clipboard, dialog, ipcMain, shell } from 'electron';
 
-import { getCurrentUser, handleAuthCallback, isAuthenticated, logout, startAuthFlow } from './auth';
+import { getCurrentUser, handleAuthCallback, isAuthenticated, logout, startAuthFlow, startLocalAuthServer } from './auth';
 import { getIdentity, verifyIdentity } from './identity';
 import { getCurrentStatus, getOnlineUsers, onLocalStatusChange, onPresenceSync } from './presence';
 import { getSettings, isSetupComplete, updateSettings, type AgentSettings } from './settings';
@@ -22,7 +22,20 @@ export function registerIpcHandlers(
 ): void {
   mainWindow = win;
 
-  ipcMain.handle('auth:start', () => startAuthFlow());
+  ipcMain.handle('auth:start', async () => {
+    if (process.platform === 'linux') {
+      const authDone = startLocalAuthServer();
+      const url = await startAuthFlow();
+      authDone.then(async () => {
+        const user = await getCurrentUser();
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('auth:changed', user);
+        }
+      }).catch((err) => console.error('[auth] Linux local auth failed:', err));
+      return url;
+    }
+    return startAuthFlow();
+  });
   ipcMain.handle('auth:callback', async (_e, url: string) => {
     await handleAuthCallback(url);
     const user = await getCurrentUser();
