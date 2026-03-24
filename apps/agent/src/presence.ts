@@ -63,7 +63,7 @@ let lastPushedStatus: PresenceStatus = 'offline';
 let lastPushedCharacter: number | null = null;
 let lastPushedOpponentCode: string | null = null;
 let lastDbWriteTime = 0;
-const DB_HEARTBEAT_INTERVAL = 60_000;
+const DB_HEARTBEAT_INTERVAL = 150_000;
 
 const presenceStats = {
   upsertOk: 0,
