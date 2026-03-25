@@ -66,16 +66,17 @@ export default async function HomePage() {
 
       {/* App demo */}
       <section className="mx-auto max-w-5xl px-4">
-        <div className="rounded-xl border border-[#2a2a2a] overflow-hidden shadow-2xl shadow-black/50">
-          <Image
-            src={`${IMG_PREFIX}/usage.gif`}
-            alt="Friendlies app demo"
-            width={1200}
-            height={750}
+        <div className="rounded-xl border border-[#2a2a2a] overflow-hidden shadow-2xl shadow-black/50 bg-black">
+          <video
             className="w-full"
-            priority
-            unoptimized
-          />
+            autoPlay
+            loop
+            muted
+            playsInline
+            aria-label="Friendlies app demo"
+          >
+            <source src={`${IMG_PREFIX}/demo.mov`} type="video/quicktime" />
+          </video>
         </div>
       </section>
 
