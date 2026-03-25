@@ -15,7 +15,7 @@
 ---
 
 <p align="center">
-  <img src="readmeimage.png" alt="friendlies app screenshot" width="800" />
+  <img src="apps/web/public/usage.gif" alt="friendlies app demo" width="800" />
 </p>
 
 ---

@@ -64,16 +64,17 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* App screenshot */}
+      {/* App demo */}
       <section className="mx-auto max-w-5xl px-4">
         <div className="rounded-xl border border-[#2a2a2a] overflow-hidden shadow-2xl shadow-black/50">
           <Image
-            src={`${IMG_PREFIX}/appexample.png`}
-            alt="Friendlies app"
+            src={`${IMG_PREFIX}/usage.gif`}
+            alt="Friendlies app demo"
             width={1200}
             height={750}
             className="w-full"
             priority
+            unoptimized
           />
         </div>
       </section>
