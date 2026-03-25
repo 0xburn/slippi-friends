@@ -21,7 +21,12 @@ function iconPath(kind: PresenceStatus): string {
 
 function loadIcon(kind: PresenceStatus): Electron.NativeImage {
   for (const p of [iconPath(kind), iconPath('online'), path.join(__dirname, '..', 'assets', 'icon.png')]) {
-    try { if (fs.existsSync(p)) return nativeImage.createFromPath(p); } catch {}
+    try {
+      if (fs.existsSync(p)) {
+        const img = nativeImage.createFromPath(p);
+        return img.resize({ width: 16, height: 16 });
+      }
+    } catch {}
   }
   return nativeImage.createEmpty();
 }

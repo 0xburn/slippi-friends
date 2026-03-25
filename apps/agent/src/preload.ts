@@ -31,6 +31,8 @@ const api = {
   sendPlayInvite: (connectCode: string) => ipcRenderer.invoke('invite:send', connectCode),
   getPendingInvites: () => ipcRenderer.invoke('invite:pending'),
   dismissInvite: (inviteId: string) => ipcRenderer.invoke('invite:dismiss', inviteId),
+  acceptPlayInvite: (inviteId: string) => ipcRenderer.invoke('invite:accept', inviteId),
+  getSentInvites: () => ipcRenderer.invoke('invite:sent'),
 
   getOpponents: (limit?: number) => ipcRenderer.invoke('opponents:list', limit),
   getOpponentsPage: (before: string, limit?: number) => ipcRenderer.invoke('opponents:page', before, limit),

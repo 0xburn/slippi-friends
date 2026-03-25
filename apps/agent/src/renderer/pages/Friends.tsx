@@ -2,7 +2,6 @@ import { useEffect, useState, useMemo } from 'react';
 import { OnlineIndicator } from '../components/OnlineIndicator';
 import { PlayerCard } from '../components/PlayerCard';
 import { RankBadge } from '../components/RankBadge';
-import { getCharacterShortName } from '../lib/characters';
 
 interface Friend {
   id: string;
@@ -57,10 +56,11 @@ export function Friends() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [inviteSent, setInviteSent] = useState<Record<string, string | true>>({});
   const [inviting, setInviting] = useState<string | null>(null);
-  const [playInvites, setPlayInvites] = useState<{ id: string; connectCode: string; displayName?: string; discordUsername?: string; created_at: string }[]>([]);
+  const [playInvites, setPlayInvites] = useState<{ id: string; connectCode: string; displayName?: string; discordUsername?: string; created_at: string; status: string }[]>([]);
+  const [sentInvites, setSentInvites] = useState<{ id: string; connectCode: string; displayName?: string; discordUsername?: string; created_at: string; status: string }[]>([]);
+  const [acceptingInvite, setAcceptingInvite] = useState<string | null>(null);
   const [dcStatus, setDcStatus] = useState<{ status: string; message: string; connectCode?: string } | null>(null);
   const [dcStarting, setDcStarting] = useState(false);
-  const [dcTestCode, setDcTestCode] = useState('');
 
   const [myStatus, setMyStatus] = useState<'online' | 'in-game' | 'offline'>('offline');
   const [lfg, setLfg] = useState(false);
@@ -95,7 +95,7 @@ export function Friends() {
     window.api.isLookingToPlay().then((v: boolean) => setLfg(v));
     window.api.getPrivacy().then((p) => setHideRegion(p.hideRegion)).catch(() => {});
 
-    Promise.all([loadFriends(), loadIncoming(), pollFriendStatuses(), loadPlayInvites()]).finally(() =>
+    Promise.all([loadFriends(), loadIncoming(), pollFriendStatuses(), loadPlayInvites(), loadSentInvites()]).finally(() =>
       setInitialLoading(false),
     );
 
@@ -136,6 +136,7 @@ export function Friends() {
       loadFriends();
       loadIncoming();
       loadPlayInvites();
+      loadSentInvites();
     }, 30_000);
     return () => { unsub(); unsubStatus(); unsubDc(); clearInterval(dbPoll); };
   }, []);
@@ -172,14 +173,30 @@ export function Friends() {
   async function loadPlayInvites() {
     try {
       const data = await window.api.getPendingInvites();
-      const invites = (data || []).slice(0, 3).map((d: any) => ({
+      const invites = (data || []).slice(0, 10).map((d: any) => ({
         id: d.id,
         connectCode: d.connectCode || '',
         displayName: d.displayName,
         discordUsername: d.discordUsername,
         created_at: d.created_at,
+        status: d.status || 'pending',
       }));
       setPlayInvites(invites);
+    } catch {}
+  }
+
+  async function loadSentInvites() {
+    try {
+      const data = await window.api.getSentInvites();
+      const invites = (data || []).slice(0, 10).map((d: any) => ({
+        id: d.id,
+        connectCode: d.connectCode || '',
+        displayName: d.displayName,
+        discordUsername: d.discordUsername,
+        created_at: d.created_at,
+        status: d.status || 'pending',
+      }));
+      setSentInvites(invites);
     } catch {}
   }
 
@@ -292,6 +309,8 @@ export function Friends() {
       setInviteSent((prev) => ({ ...prev, [connectCode]: result.error }));
     } else {
       setInviteSent((prev) => ({ ...prev, [connectCode]: true }));
+      await loadSentInvites();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
     setInviting(null);
     setTimeout(() => setInviteSent((prev) => {
@@ -299,6 +318,18 @@ export function Friends() {
       delete next[connectCode];
       return next;
     }), 3000);
+  }
+
+  async function handleAcceptInvite(inviteId: string) {
+    setAcceptingInvite(inviteId);
+    await window.api.acceptPlayInvite(inviteId);
+    await loadPlayInvites();
+    setAcceptingInvite(null);
+  }
+
+  async function handleCancelSentInvite(inviteId: string) {
+    await window.api.dismissInvite(inviteId);
+    await loadSentInvites();
   }
 
   async function handleCopy(code: string) {
@@ -338,34 +369,24 @@ export function Friends() {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  const isDirectConnectUser = myIdentity?.connectCode === 'SMOK#1' || myIdentity?.connectCode === 'BF#0';
+  const hasActiveInvites = isDirectConnectUser && (sentInvites.length > 0 || playInvites.length > 0);
+
+  useEffect(() => {
+    if (!hasActiveInvites) return;
+    const fastPoll = setInterval(() => {
+      loadPlayInvites();
+      loadSentInvites();
+    }, 3_000);
+    return () => clearInterval(fastPoll);
+  }, [hasActiveInvites]);
+
   const wins = myProfile?.wins ?? 0;
   const losses = myProfile?.losses ?? 0;
   const total = wins + losses;
 
   return (
     <div className="space-y-6 max-w-2xl">
-      {/* Direct connect test */}
-      <form
-        onSubmit={(e) => { e.preventDefault(); if (dcTestCode.trim()) handleDirectConnect(dcTestCode.trim()); }}
-        className="flex gap-2"
-      >
-        <input
-          type="text"
-          value={dcTestCode}
-          onChange={(e) => setDcTestCode(e.target.value.toUpperCase())}
-          placeholder="MANG#0"
-          disabled={dcStarting}
-          className="flex-1 rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] px-4 py-3 text-lg font-mono font-bold tracking-wider text-white placeholder-gray-600 focus:border-blue-500/50 focus:outline-none disabled:opacity-40"
-        />
-        <button
-          type="submit"
-          disabled={dcStarting || !dcTestCode.trim()}
-          className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-6 py-3 text-lg font-bold text-blue-400 hover:bg-blue-500/20 transition-all disabled:opacity-40 whitespace-nowrap"
-        >
-          {dcStarting ? 'Connecting...' : 'Play'}
-        </button>
-      </form>
-
       {/* Player status card */}
       {myIdentity && (
         <div className="rounded-2xl border border-[#2a2a2a] bg-[#141414] p-4">
@@ -423,12 +444,101 @@ export function Friends() {
         </div>
       )}
 
-      {playInvites.length > 0 && (
+      {/* Active Invites — feature-gated direct connect flow */}
+      {isDirectConnectUser && (sentInvites.length > 0 || playInvites.length > 0) && (
+        <div className="space-y-2">
+          {sentInvites.map((inv) => (
+            <div key={`sent-${inv.id}`} className={`rounded-2xl border p-4 ${
+              inv.status === 'accepted'
+                ? 'border-[#21BA45]/30 bg-[#21BA45]/5'
+                : 'border-blue-500/20 bg-blue-500/5'
+            }`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="font-mono font-bold text-white text-sm">{inv.connectCode}</span>
+                  {inv.displayName && (
+                    <span className="text-xs text-gray-500 truncate">{inv.displayName}</span>
+                  )}
+                </div>
+                {inv.status === 'accepted' ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-[#21BA45]">Both Players are Ready!</span>
+                    <button
+                      onClick={() => handleDirectConnect(inv.connectCode)}
+                      disabled={dcStarting}
+                      className="shrink-0 rounded-lg bg-blue-500 px-4 py-2 text-sm font-bold text-white hover:bg-blue-600 transition-colors disabled:opacity-40"
+                    >
+                      Open Melee
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-xs text-blue-400">Waiting for {inv.connectCode} to accept...</span>
+                    <button
+                      onClick={() => handleCancelSentInvite(inv.id)}
+                      className="shrink-0 rounded-lg bg-red-500/10 px-2.5 py-1.5 text-xs text-red-400 hover:bg-red-500/20 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+          {playInvites.map((inv) => (
+            <div key={`recv-${inv.id}`} className={`rounded-2xl border p-4 ${
+              inv.status === 'accepted'
+                ? 'border-[#21BA45]/30 bg-[#21BA45]/5'
+                : 'border-amber-500/20 bg-amber-500/5'
+            }`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="font-mono font-bold text-white text-sm">{inv.connectCode}</span>
+                  {inv.displayName && (
+                    <span className="text-xs text-gray-500 truncate">{inv.displayName}</span>
+                  )}
+                </div>
+                {inv.status === 'accepted' ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-[#21BA45]">Both Players are Ready!</span>
+                    <button
+                      onClick={() => handleDirectConnect(inv.connectCode)}
+                      disabled={dcStarting}
+                      className="shrink-0 rounded-lg bg-blue-500 px-4 py-2 text-sm font-bold text-white hover:bg-blue-600 transition-colors disabled:opacity-40"
+                    >
+                      Open Melee
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-amber-400">{inv.connectCode} wants to play!</span>
+                    <button
+                      onClick={() => handleAcceptInvite(inv.id)}
+                      disabled={acceptingInvite === inv.id}
+                      className="shrink-0 rounded-lg bg-[#21BA45] px-4 py-2 text-sm font-bold text-white hover:bg-[#1ea33e] transition-colors disabled:opacity-50"
+                    >
+                      {acceptingInvite === inv.id ? '...' : 'Accept'}
+                    </button>
+                    <button
+                      onClick={() => { window.api.dismissInvite(inv.id); loadPlayInvites(); }}
+                      className="shrink-0 rounded-lg bg-red-500/10 px-2.5 py-1.5 text-xs text-red-400 hover:bg-red-500/20 transition-colors"
+                    >
+                      Decline
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Legacy "Wants to play" for non-gated users */}
+      {!isDirectConnectUser && playInvites.length > 0 && (
         <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 space-y-2">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-amber-400">
-              🎮 Wants to play
-            </h2>
+            <h2 className="text-sm font-semibold text-amber-400">Wants to play</h2>
             <button
               onClick={clearPlayInvites}
               className="text-[10px] font-medium text-amber-500/60 hover:text-amber-400 transition-colors"
@@ -445,22 +555,7 @@ export function Friends() {
                   {inv.displayName && (
                     <span className="text-xs text-gray-500 truncate">{inv.displayName}</span>
                   )}
-                  {inv.discordUsername && (
-                    <span className="inline-flex items-center gap-1 shrink-0 rounded-md bg-[#5865F2]/10 px-1.5 py-0.5">
-                      <svg className="w-3.5 h-3.5 text-[#5865F2]" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
-                      </svg>
-                      <span className="text-xs font-medium text-[#5865F2]">@{inv.discordUsername}</span>
-                    </span>
-                  )}
                 </div>
-                <button
-                  onClick={() => handleDirectConnect(inv.connectCode)}
-                  disabled={dcStarting || !inv.connectCode}
-                  className="shrink-0 rounded-lg bg-blue-500/10 px-2.5 py-1.5 text-xs text-blue-400 hover:bg-blue-500/20 transition-colors disabled:opacity-30"
-                >
-                  Direct
-                </button>
                 <span className="text-[10px] text-amber-500/50 shrink-0">{ago < 1 ? 'just now' : `${ago}m ago`}</span>
               </div>
             );
@@ -680,14 +775,6 @@ export function Friends() {
                   onClick={() => handleCopy(f.connectCode)}
                 />
               </div>
-              <button
-                onClick={(e) => { e.stopPropagation(); handleDirectConnect(f.connectCode); }}
-                disabled={dcStarting}
-                className="shrink-0 opacity-0 group-hover:opacity-100 rounded-lg bg-blue-500/10 px-2.5 py-1.5 text-xs text-blue-400 hover:bg-blue-500/20 transition-all disabled:opacity-30"
-                title="Direct connect via Dolphin"
-              >
-                Direct
-              </button>
               {invState === true ? (
                 <span className="shrink-0 text-[10px] font-medium text-[#21BA45]">Sent!</span>
               ) : typeof invState === 'string' ? (
@@ -696,9 +783,13 @@ export function Friends() {
                 <button
                   onClick={(e) => { e.stopPropagation(); handleInvite(f.connectCode); }}
                   disabled={inviting === f.connectCode}
-                  className="shrink-0 opacity-0 group-hover:opacity-100 rounded-lg bg-[#21BA45]/10 px-2.5 py-1.5 text-xs text-[#21BA45] hover:bg-[#21BA45]/20 transition-all"
+                  className={`shrink-0 opacity-0 group-hover:opacity-100 rounded-lg px-2.5 py-1.5 text-xs transition-all ${
+                    isDirectConnectUser
+                      ? 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20'
+                      : 'bg-[#21BA45]/10 text-[#21BA45] hover:bg-[#21BA45]/20'
+                  }`}
                 >
-                  {inviting === f.connectCode ? '...' : '🎮 Play'}
+                  {inviting === f.connectCode ? '...' : (isDirectConnectUser ? 'Invite' : '🎮 Play')}
                 </button>
               )}
               <button

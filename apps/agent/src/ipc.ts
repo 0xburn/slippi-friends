@@ -411,7 +411,7 @@ export function registerIpcHandlers(
       const cutoff = new Date(Date.now() - INVITE_COOLDOWN_MS).toISOString();
       const { data } = await supabase
         .from('play_invites')
-        .select('id, sender_id, created_at')
+        .select('id, sender_id, created_at, status')
         .eq('receiver_id', user.id)
         .gte('created_at', cutoff)
         .order('created_at', { ascending: false });
@@ -439,6 +439,53 @@ export function registerIpcHandlers(
       await supabase.from('play_invites').delete().eq('id', inviteId);
       return { ok: true };
     } catch (e: any) { return { error: e.message }; }
+  });
+
+  ipcMain.handle('invite:accept', async (_e, inviteId: string) => {
+    try {
+      const user = await getCurrentUser();
+      if (!user) return { error: 'Not authenticated' };
+
+      const { error } = await supabase
+        .from('play_invites')
+        .update({ status: 'accepted' })
+        .eq('id', inviteId)
+        .eq('receiver_id', user.id);
+
+      if (error) return { error: error.message };
+      return { ok: true };
+    } catch (e: any) { return { error: e.message }; }
+  });
+
+  ipcMain.handle('invite:sent', async () => {
+    try {
+      const user = await getCurrentUser();
+      if (!user) return [];
+
+      const cutoff = new Date(Date.now() - INVITE_COOLDOWN_MS).toISOString();
+      const { data } = await supabase
+        .from('play_invites')
+        .select('id, receiver_id, created_at, status')
+        .eq('sender_id', user.id)
+        .gte('created_at', cutoff)
+        .order('created_at', { ascending: false });
+      if (!data || data.length === 0) return [];
+
+      const receiverIds = data.map((d: any) => d.receiver_id);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, connect_code, display_name, discord_username')
+        .in('id', receiverIds);
+      const profileMap: Record<string, any> = {};
+      (profiles || []).forEach((p: any) => { profileMap[p.id] = p; });
+
+      return data.map((d: any) => ({
+        ...d,
+        connectCode: profileMap[d.receiver_id]?.connect_code,
+        displayName: profileMap[d.receiver_id]?.display_name,
+        discordUsername: profileMap[d.receiver_id]?.discord_username,
+      }));
+    } catch { return []; }
   });
 
   ipcMain.handle('opponents:backfill', async (_e, sinceMs?: number, beforeMs?: number) => {
