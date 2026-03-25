@@ -31,6 +31,8 @@ const api = {
   sendPlayInvite: (connectCode: string) => ipcRenderer.invoke('invite:send', connectCode),
   getPendingInvites: () => ipcRenderer.invoke('invite:pending'),
   dismissInvite: (inviteId: string) => ipcRenderer.invoke('invite:dismiss', inviteId),
+  acceptPlayInvite: (inviteId: string) => ipcRenderer.invoke('invite:accept', inviteId),
+  getSentInvites: () => ipcRenderer.invoke('invite:sent'),
 
   getOpponents: (limit?: number) => ipcRenderer.invoke('opponents:list', limit),
   getOpponentsPage: (before: string, limit?: number) => ipcRenderer.invoke('opponents:page', before, limit),
@@ -71,6 +73,11 @@ const api = {
   checkForUpdates: () => ipcRenderer.invoke('updater:check'),
   downloadUpdate: () => ipcRenderer.invoke('updater:download'),
   installUpdate: () => ipcRenderer.invoke('updater:install'),
+
+  startDirectConnect: (connectCode: string) => ipcRenderer.invoke('directConnect:start', connectCode),
+  stopDirectConnect: () => ipcRenderer.invoke('directConnect:stop'),
+  getDirectConnectStatus: () => ipcRenderer.invoke('directConnect:status') as Promise<{ status: string; active: boolean }>,
+  onDirectConnectStatus: (cb: (evt: any) => void): Unsubscribe => onEvent('directConnect:status', cb),
 };
 
 export type ElectronAPI = typeof api;
