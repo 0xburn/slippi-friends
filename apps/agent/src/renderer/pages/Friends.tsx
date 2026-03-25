@@ -125,9 +125,9 @@ export function Friends() {
 
     const unsubDc = window.api.onDirectConnectStatus((evt: any) => {
       setDcStatus(evt);
-      if (evt.status === 'connected' || evt.status === 'error' || evt.status === 'cancelled') {
+      if (evt.status === 'ready' || evt.status === 'error' || evt.status === 'cancelled') {
         setDcStarting(false);
-        setTimeout(() => setDcStatus(null), 5000);
+        setTimeout(() => setDcStatus(null), 8000);
       }
     });
 
@@ -574,17 +574,17 @@ export function Friends() {
       {dcStatus && (
         <div className={`rounded-2xl border p-4 flex items-center justify-between ${
           dcStatus.status === 'error' ? 'border-red-500/20 bg-red-500/5' :
-          dcStatus.status === 'connected' ? 'border-[#21BA45]/20 bg-[#21BA45]/5' :
+          dcStatus.status === 'ready' ? 'border-[#21BA45]/20 bg-[#21BA45]/5' :
           'border-blue-500/20 bg-blue-500/5'
         }`}>
           <div className="flex items-center gap-3 min-w-0">
-            {dcStatus.status !== 'error' && dcStatus.status !== 'connected' && dcStatus.status !== 'cancelled' && (
+            {dcStatus.status !== 'error' && dcStatus.status !== 'ready' && dcStatus.status !== 'cancelled' && (
               <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin shrink-0" />
             )}
             <div className="min-w-0">
               <p className={`text-sm font-medium ${
                 dcStatus.status === 'error' ? 'text-red-400' :
-                dcStatus.status === 'connected' ? 'text-[#21BA45]' :
+                dcStatus.status === 'ready' ? 'text-[#21BA45]' :
                 'text-blue-400'
               }`}>
                 {dcStatus.message}
@@ -594,7 +594,7 @@ export function Friends() {
               )}
             </div>
           </div>
-          {dcStatus.status !== 'error' && dcStatus.status !== 'connected' && dcStatus.status !== 'cancelled' && (
+          {dcStatus.status !== 'error' && dcStatus.status !== 'ready' && dcStatus.status !== 'cancelled' && (
             <button
               onClick={handleStopDirectConnect}
               className="shrink-0 rounded-lg bg-red-500/10 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/20 transition-colors"
@@ -798,6 +798,16 @@ export function Friends() {
                   }`}
                 >
                   {inviting === f.connectCode ? '...' : (isDirectConnectUser ? 'Invite' : '🎮 Play')}
+                </button>
+              )}
+              {isDirectConnectUser && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleDirectConnect(f.connectCode); }}
+                  disabled={dcStarting}
+                  className="shrink-0 opacity-0 group-hover:opacity-100 rounded-lg bg-purple-500/10 px-2.5 py-1.5 text-xs text-purple-400 hover:bg-purple-500/20 disabled:opacity-30 transition-all"
+                  title={`Direct connect to ${f.connectCode}`}
+                >
+                  DC
                 </button>
               )}
               <button
