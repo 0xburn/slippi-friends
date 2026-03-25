@@ -86,11 +86,9 @@ function createMainWindow(): BrowserWindow {
 
   win.once('ready-to-show', () => win.show());
   win.on('close', (e) => {
-    if (process.platform === 'darwin' && !(app as any).isQuitting) {
+    if (!(app as any).isQuitting) {
       e.preventDefault();
       win.hide();
-    } else {
-      (app as any).isQuitting = true;
     }
   });
 
@@ -434,8 +432,5 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    (app as any).isQuitting = true;
-    app.quit();
-  }
+  // Don't quit — the app stays alive in the system tray on all platforms
 });
