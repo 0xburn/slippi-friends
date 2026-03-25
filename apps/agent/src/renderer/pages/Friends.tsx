@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { OnlineIndicator } from '../components/OnlineIndicator';
 import { PlayerCard } from '../components/PlayerCard';
 import { RankBadge } from '../components/RankBadge';
@@ -61,6 +61,9 @@ export function Friends() {
   const [acceptingInvite, setAcceptingInvite] = useState<string | null>(null);
   const [dcStatus, setDcStatus] = useState<{ status: string; message: string; connectCode?: string } | null>(null);
   const [dcStarting, setDcStarting] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState<{ id: string; code: string } | null>(null);
+
+  const topRef = useRef<HTMLDivElement>(null);
 
   const [myStatus, setMyStatus] = useState<'online' | 'in-game' | 'offline'>('offline');
   const [lfg, setLfg] = useState(false);
@@ -202,13 +205,6 @@ export function Friends() {
     } catch {}
   }
 
-  async function clearPlayInvites() {
-    for (const inv of playInvites) {
-      await window.api.dismissInvite(inv.id);
-    }
-    setPlayInvites([]);
-  }
-
   const enriched = useMemo(() => {
     return friends.map((f) => {
       const presence = onlineMap[f.connectCode];
@@ -284,6 +280,7 @@ export function Friends() {
   }
 
   async function handleRemove(friendshipId: string) {
+    setConfirmRemove(null);
     setRemoving(friendshipId);
     await window.api.removeFriend(friendshipId);
     await loadFriends();
@@ -312,7 +309,7 @@ export function Friends() {
     } else {
       setInviteSent((prev) => ({ ...prev, [connectCode]: true }));
       await loadSentInvites();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
     setInviting(null);
     setTimeout(() => setInviteSent((prev) => {
@@ -375,10 +372,9 @@ export function Friends() {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  const isDirectConnectUser = myIdentity?.connectCode === 'SMOK#1' || myIdentity?.connectCode === 'BF#0';
   const visibleSentInvites = sentInvites.filter((inv) => !inv.myOpened);
   const visiblePlayInvites = playInvites.filter((inv) => !inv.myOpened);
-  const hasActiveInvites = isDirectConnectUser && (sentInvites.length > 0 || playInvites.length > 0);
+  const hasActiveInvites = sentInvites.length > 0 || playInvites.length > 0;
 
   useEffect(() => {
     if (!hasActiveInvites) return;
@@ -395,6 +391,7 @@ export function Friends() {
 
   return (
     <div className="space-y-6 max-w-2xl">
+      <div ref={topRef} />
       {/* Player status card */}
       {myIdentity && (
         <div className="rounded-2xl border border-[#2a2a2a] bg-[#141414] p-4">
@@ -452,8 +449,8 @@ export function Friends() {
         </div>
       )}
 
-      {/* Active Invites — feature-gated direct connect flow */}
-      {isDirectConnectUser && (visibleSentInvites.length > 0 || visiblePlayInvites.length > 0) && (
+      {/* Active Invites */}
+      {(visibleSentInvites.length > 0 || visiblePlayInvites.length > 0) && (
         <div className="space-y-2">
           {visibleSentInvites.map((inv) => (
             <div key={`sent-${inv.id}`} className={`rounded-2xl border p-4 ${
@@ -539,35 +536,6 @@ export function Friends() {
               </div>
             </div>
           ))}
-        </div>
-      )}
-
-      {/* Legacy "Wants to play" for non-gated users */}
-      {!isDirectConnectUser && playInvites.length > 0 && (
-        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 space-y-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-amber-400">Wants to play</h2>
-            <button
-              onClick={clearPlayInvites}
-              className="text-[10px] font-medium text-amber-500/60 hover:text-amber-400 transition-colors"
-            >
-              Clear all
-            </button>
-          </div>
-          {playInvites.map((inv) => {
-            const ago = Math.round((Date.now() - new Date(inv.created_at).getTime()) / 60_000);
-            return (
-              <div key={inv.id} className="flex items-center justify-between py-1">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-mono font-bold text-white text-sm">{inv.connectCode}</span>
-                  {inv.displayName && (
-                    <span className="text-xs text-gray-500 truncate">{inv.displayName}</span>
-                  )}
-                </div>
-                <span className="text-[10px] text-amber-500/50 shrink-0">{ago < 1 ? 'just now' : `${ago}m ago`}</span>
-              </div>
-            );
-          })}
         </div>
       )}
 
@@ -715,7 +683,7 @@ export function Friends() {
               </div>
               <span className="shrink-0 text-[10px] text-yellow-500/60">sent</span>
               <button
-                onClick={(e) => { e.stopPropagation(); handleRemove(f.id); }}
+                onClick={(e) => { e.stopPropagation(); setConfirmRemove({ id: f.id, code: f.connectCode }); }}
                 disabled={removing === f.id}
                 className="shrink-0 opacity-0 group-hover:opacity-100 rounded-lg bg-red-500/10 px-2.5 py-1.5 text-xs text-red-400 hover:bg-red-500/20 transition-all"
               >
@@ -753,6 +721,31 @@ export function Friends() {
             </p>
           </div>
         )}
+        {/* Confirmation modal */}
+        {confirmRemove && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setConfirmRemove(null)}>
+            <div className="rounded-2xl border border-[#2a2a2a] bg-[#141414] p-6 w-[320px] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <p className="text-sm text-gray-300 text-center">
+                Remove <span className="font-mono font-bold text-white">{confirmRemove.code}</span>?
+              </p>
+              <div className="flex gap-3 mt-5">
+                <button
+                  onClick={() => setConfirmRemove(null)}
+                  className="flex-1 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] px-4 py-2 text-sm font-medium text-gray-400 hover:text-white hover:bg-[#222] transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleRemove(confirmRemove.id)}
+                  className="flex-1 rounded-lg bg-red-500/20 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-500/30 transition-colors"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {accepted.map((f) => {
           const invState = inviteSent[f.connectCode];
           return (
@@ -790,28 +783,22 @@ export function Friends() {
               ) : (
                 <button
                   onClick={(e) => { e.stopPropagation(); handleInvite(f.connectCode); }}
-                  disabled={inviting === f.connectCode || (isDirectConnectUser && hasActiveInvites)}
-                  className={`shrink-0 opacity-0 group-hover:opacity-100 rounded-lg px-2.5 py-1.5 text-xs transition-all ${
-                    isDirectConnectUser
-                      ? 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 disabled:opacity-30'
-                      : 'bg-[#21BA45]/10 text-[#21BA45] hover:bg-[#21BA45]/20'
-                  }`}
+                  disabled={inviting === f.connectCode || hasActiveInvites}
+                  className="shrink-0 opacity-0 group-hover:opacity-100 rounded-lg px-2.5 py-1.5 text-xs transition-all bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 disabled:opacity-30"
                 >
-                  {inviting === f.connectCode ? '...' : (isDirectConnectUser ? 'Invite' : '🎮 Play')}
-                </button>
-              )}
-              {isDirectConnectUser && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleDirectConnect(f.connectCode); }}
-                  disabled={dcStarting}
-                  className="shrink-0 opacity-0 group-hover:opacity-100 rounded-lg bg-purple-500/10 px-2.5 py-1.5 text-xs text-purple-400 hover:bg-purple-500/20 disabled:opacity-30 transition-all"
-                  title={`Direct connect to ${f.connectCode}`}
-                >
-                  DC
+                  {inviting === f.connectCode ? '...' : 'Invite'}
                 </button>
               )}
               <button
-                onClick={(e) => { e.stopPropagation(); handleRemove(f.id); }}
+                onClick={(e) => { e.stopPropagation(); handleDirectConnect(f.connectCode); }}
+                disabled={dcStarting}
+                className="shrink-0 opacity-0 group-hover:opacity-100 rounded-lg bg-purple-500/10 px-2.5 py-1.5 text-xs text-purple-400 hover:bg-purple-500/20 disabled:opacity-30 transition-all"
+                title={`Direct connect to ${f.connectCode}`}
+              >
+                DC
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setConfirmRemove({ id: f.id, code: f.connectCode }); }}
                 disabled={removing === f.id}
                 className="shrink-0 opacity-0 group-hover:opacity-100 rounded-lg bg-red-500/10 px-2.5 py-1.5 text-xs text-red-400 hover:bg-red-500/20 transition-all"
               >
