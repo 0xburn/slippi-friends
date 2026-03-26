@@ -504,6 +504,10 @@ app.whenReady().then(async () => {
       return { ok: true };
     });
 
+    ipcMain.handle('nudge:markSeen', (_e, ids: string[]) => {
+      if (Array.isArray(ids)) ids.forEach((id) => knownNudgeIds.add(id));
+    });
+
     if (!isDev) {
       initAutoUpdater(mainWindow);
       checkForUpdates();

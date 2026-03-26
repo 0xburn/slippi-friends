@@ -92,6 +92,7 @@ const api = {
   onNotificationSound: (cb: () => void): Unsubscribe => onEvent('notification:sound', cb),
   sendNudge: (connectCode: string, message: string) => ipcRenderer.invoke('nudge:send', connectCode, message) as Promise<{ ok?: boolean; error?: string }>,
   getNudges: () => ipcRenderer.invoke('nudge:list') as Promise<any[]>,
+  markNudgesSeen: (ids: string[]) => ipcRenderer.invoke('nudge:markSeen', ids),
   getSentNudges: () => ipcRenderer.invoke('nudge:listSent') as Promise<any[]>,
 
   testNotification: () => ipcRenderer.invoke('notifications:test'),

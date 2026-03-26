@@ -55,6 +55,9 @@ export function GGs() {
     try {
       const data = await window.api.getNudges();
       setNudges(data || []);
+      if (data?.length) {
+        window.api.markNudgesSeen(data.map((n: any) => n.id));
+      }
     } catch {}
   }
 
