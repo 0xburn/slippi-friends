@@ -7,7 +7,7 @@ import {
 import { APP_PROTOCOL, PRESENCE_STALE_THRESHOLD } from './config';
 import { getIdentity, verifyIdentity, type SlippiIdentity } from './identity';
 import { registerIpcHandlers, sendToRenderer } from './ipc';
-import { showFriendOnlineNotification, showFriendRequestNotification, showOpponentNotification, showPlayInviteNotification } from './notifications';
+import { showFriendOnlineNotification, showFriendRequestNotification, showPlayInviteNotification } from './notifications';
 import { supabase } from './supabase';
 import {
   getCurrentStatus, onGameActiveChange, pushOfflineAndStop, setGameThrottling, setLastOpponent, startPresenceLoop, stopPresenceLoop, updatePresenceReplayDir,
@@ -259,9 +259,6 @@ async function startAgentServices(identity: SlippiIdentity, userId: string): Pro
       addRecentOpponent(info.connectCode, info.displayName);
       setLastOpponent(info.connectCode, info.characterId);
       sendToRenderer('opponent:new', info);
-      if (getSettings().showNotifications) {
-        showOpponentNotification(info.connectCode, info.displayName, info.characterId);
-      }
       updateTrayStatus(getCurrentStatus());
     } catch (e) { console.error('opponent callback', e); }
   });
