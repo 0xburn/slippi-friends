@@ -485,12 +485,12 @@ export function Friends() {
             >
               {lfg ? '🎮 Looking to play!' : '🎮 Looking to play?'}
             </button>
-            <button
+            {/* <button
               onClick={copyCode}
               className="shrink-0 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] px-3 py-1.5 text-xs font-medium text-gray-400 hover:text-white hover:bg-[#222] transition-all"
             >
               {copied ? '✓' : 'Copy'}
-            </button>
+            </button> */}
           </div>
         </div>
       )}

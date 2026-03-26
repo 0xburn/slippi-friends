@@ -146,12 +146,12 @@ export function Dashboard() {
             </div>
           </div>
           {connectCode && (
-            <button
-              onClick={copyCode}
-              className="shrink-0 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] px-4 py-2 text-sm font-medium text-gray-300 transition-all hover:bg-[#222] hover:text-white"
-            >
-              {copied ? '✓ Copied' : 'Copy Code'}
-            </button>
+            // <button
+            //   onClick={copyCode}
+            //   className="shrink-0 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] px-4 py-2 text-sm font-medium text-gray-300 transition-all hover:bg-[#222] hover:text-white"
+            // >
+            //   {copied ? '✓ Copied' : 'Copy Code'}
+            // </button>
           )}
         </div>
       </div>
