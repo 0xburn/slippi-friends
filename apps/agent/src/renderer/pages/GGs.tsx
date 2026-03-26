@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-const NUDGE_OPTIONS = ['GGs', 'one more', 'gtg', 'you play so hot and cool'];
+const NUDGE_OPTIONS = ['GGs', 'one more', 'gtg', 'you play so hot and cool', 'that was sick', "you're cracked", "i'm cracked", "i'm so high", 'check discord'];
 
 interface Nudge {
   id: string;

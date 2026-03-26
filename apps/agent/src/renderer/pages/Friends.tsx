@@ -88,8 +88,8 @@ export function Friends() {
   
   const [nudgeSent, setNudgeSent] = useState<Record<string, string>>({});
 
-  const STATUS_PRESETS = ['Down for friendlies', 'Ranked grind', 'Warming up', 'Quick session', 'Running sets'];
-  const NUDGE_OPTIONS = ['GGs', 'one more', 'gtg', 'you play so hot and cool'];
+  const STATUS_PRESETS = ['Down for friendlies', 'Ranked grind', 'Warming up', 'Quick session', 'Running sets', 'Will play anyone', 'Labbing tech', 'Need spacie practice', 'Need floatie practice'];
+  const NUDGE_OPTIONS = ['GGs', 'one more', 'gtg', 'you play so hot and cool', 'that was sick', "you're cracked", "i'm cracked", "i'm so high", 'check discord'];
 
   useEffect(() => {
     window.api.getIdentity().then((id) => {
