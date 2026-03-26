@@ -25,5 +25,8 @@ apps/agent/release/
 skills-lock.json
 AGENTS.md
 
+# Internal docs
+notes.md
+
 # Supabase local dev
 supabase/.temp/

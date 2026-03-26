@@ -88,7 +88,7 @@ function createMainWindow(): BrowserWindow {
 
   win.once('ready-to-show', () => win.show());
   win.on('close', (e) => {
-    if (!(app as any).isQuitting) {
+    if (!(app as any).isQuitting && getSettings().closeToTray) {
       e.preventDefault();
       win.hide();
     }

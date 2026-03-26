@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 interface SettingsState {
   replayDir: string;
   autoLaunch: boolean;
+  closeToTray: boolean;
   showNotifications: boolean;
   notifyFriendOnline: boolean;
   notifyPlayInvite: boolean;
@@ -37,6 +38,7 @@ export function Settings() {
   const [settings, setSettings] = useState<SettingsState>({
     replayDir: '',
     autoLaunch: false,
+    closeToTray: false,
     showNotifications: true,
     notifyFriendOnline: true,
     notifyPlayInvite: true,
@@ -57,6 +59,7 @@ export function Settings() {
       setSettings({
         replayDir: s.replayDir || '',
         autoLaunch: s.autoLaunch || false,
+        closeToTray: !!s.closeToTray,
         showNotifications: s.showNotifications !== false,
         notifyFriendOnline: s.notifyFriendOnline !== false,
         notifyPlayInvite: s.notifyPlayInvite !== false,
@@ -167,6 +170,12 @@ export function Settings() {
           description="Start friendlies automatically when you log in"
           checked={settings.autoLaunch}
           onChange={() => toggle('autoLaunch')}
+        />
+        <ToggleRow
+          label="Close to Tray"
+          description="Minimize to the system tray instead of quitting when you close the window"
+          checked={settings.closeToTray}
+          onChange={() => toggle('closeToTray')}
         />
       </div>
 
@@ -409,7 +418,7 @@ export function Settings() {
       })()}
 
       <p className="text-center text-xs text-gray-600">
-      friendlies v0.1.82
+      friendlies v0.1.83
       </p>
     </div>
   );

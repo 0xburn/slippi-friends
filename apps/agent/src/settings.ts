@@ -7,6 +7,7 @@ import { getDefaultReplayDir } from './config';
 export type AgentSettings = {
   replayDir: string;
   autoLaunch: boolean;
+  closeToTray: boolean;
   showNotifications: boolean;
   notifyFriendOnline: boolean;
   notifyPlayInvite: boolean;
@@ -28,6 +29,7 @@ export function getSettings(): AgentSettings {
     return {
       replayDir: (store.get('replayDir') as string | undefined) ?? getDefaultReplayDir(),
       autoLaunch: Boolean(store.get('autoLaunch')),
+      closeToTray: Boolean(store.get('closeToTray')),
       showNotifications: store.get('showNotifications') !== false,
       notifyFriendOnline: store.get('notifyFriendOnline') !== false,
       notifyPlayInvite: store.get('notifyPlayInvite') !== false,
@@ -38,7 +40,7 @@ export function getSettings(): AgentSettings {
       disableStatuses: Boolean(store.get('disableStatuses')),
     };
   } catch {
-    return { replayDir: getDefaultReplayDir(), autoLaunch: false, showNotifications: true, notifyFriendOnline: true, notifyPlayInvite: true, notificationSound: true, setupComplete: false, reduceBackgroundActivity: true, disableNudges: false, disableStatuses: false };
+    return { replayDir: getDefaultReplayDir(), autoLaunch: false, closeToTray: false, showNotifications: true, notifyFriendOnline: true, notifyPlayInvite: true, notificationSound: true, setupComplete: false, reduceBackgroundActivity: true, disableNudges: false, disableStatuses: false };
   }
 }
 
@@ -51,6 +53,7 @@ export function updateSettings(partial: Partial<AgentSettings>): AgentSettings {
       store.set('autoLaunch', next.autoLaunch);
       app.setLoginItemSettings({ openAtLogin: next.autoLaunch, openAsHidden: true });
     }
+    if (partial.closeToTray !== undefined) store.set('closeToTray', next.closeToTray);
     if (partial.showNotifications !== undefined) store.set('showNotifications', next.showNotifications);
     if (partial.notifyFriendOnline !== undefined) store.set('notifyFriendOnline', next.notifyFriendOnline);
     if (partial.notifyPlayInvite !== undefined) store.set('notifyPlayInvite', next.notifyPlayInvite);
