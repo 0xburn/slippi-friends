@@ -18,6 +18,15 @@ const find = require('find-process') as (
   strict?: boolean,
 ) => Promise<Array<{ name: string; pid: number }>>;
 
+function findAppImages(dir: string): string[] {
+  try {
+    if (!fs.existsSync(dir)) return [];
+    return fs.readdirSync(dir)
+      .filter((f) => /slippi.*\.appimage$/i.test(f))
+      .map((f) => path.join(dir, f));
+  } catch { return []; }
+}
+
 export function getDolphinExePath(): string | null {
   const home = os.homedir();
 
@@ -34,8 +43,21 @@ export function getDolphinExePath(): string | null {
             '/Applications/Slippi Dolphin.app/Contents/MacOS/Slippi Dolphin',
           ]
         : [
+            // Slippi Launcher managed
             path.join(home, '.config', 'Slippi Launcher', 'netplay', 'Slippi_Dolphin'),
             path.join(home, '.config', 'Slippi Launcher', 'netplay', 'squashfs-root', 'usr', 'bin', 'dolphin-emu'),
+            // AUR / system packages
+            '/usr/bin/slippi-dolphin',
+            '/usr/bin/dolphin-emu',
+            '/usr/local/bin/slippi-dolphin',
+            '/usr/local/bin/dolphin-emu',
+            // User-local installs
+            path.join(home, '.local', 'bin', 'Slippi_Dolphin'),
+            path.join(home, '.local', 'bin', 'slippi-dolphin'),
+            // Flatpak
+            path.join(home, '.var', 'app', 'io.github.nicoboss.dolphin-slippi', 'bin', 'dolphin-emu'),
+            // AppImage scan fallback
+            ...findAppImages(path.join(home, '.config', 'Slippi Launcher', 'netplay')),
           ];
 
   for (const p of candidates) {

@@ -504,5 +504,14 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
-  // Don't quit — the app stays alive in the system tray on all platforms
+  if (!getSettings().closeToTray) {
+    (app as any).isQuitting = true;
+    app.quit();
+  }
+});
+
+app.on('activate', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.show();
+  }
 });

@@ -31,6 +31,8 @@ function slippiUserDirectoryCandidates(): string[] {
           path.join(home, '.config', 'com.project-slippi.dolphin', 'netplay', 'User'),
           path.join(home, '.config', 'Slippi Launcher', 'netplay', 'User'),
           path.join(home, '.config', 'SlippiOnline'),
+          path.join(home, '.local', 'share', 'dolphin-emu', 'User'),
+          path.join(home, '.local', 'share', 'slippi-dolphin', 'User'),
         ];
 }
 
