@@ -158,7 +158,17 @@ export function Friends() {
       loadPlayInvites();
       loadSentInvites();
     }, 30_000);
-    return () => { unsub(); unsubStatus(); unsubDc(); unsubInvRefresh(); clearInterval(dbPoll); };
+    const onVisible = () => {
+      if (!document.hidden) {
+        pollFriendStatuses();
+        loadFriends();
+        loadIncoming();
+        loadPlayInvites();
+        loadSentInvites();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { unsub(); unsubStatus(); unsubDc(); unsubInvRefresh(); clearInterval(dbPoll); document.removeEventListener('visibilitychange', onVisible); };
   }, []);
 
   async function pollFriendStatuses() {

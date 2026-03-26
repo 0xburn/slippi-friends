@@ -24,27 +24,19 @@ export function Navigation() {
   useEffect(() => {
     window.api.getPlayerCount().then((c: number) => { if (c > 0) setPlayerCount(c); });
     window.api.getBroadcast().then((msg: string | null) => setBroadcast(msg));
+    window.api.getLivePresence().then(setLivePresence);
     window.api.getIdentity().then((id: any) => {
       if (id?.connectCode && ADMIN_CODES.includes(id.connectCode)) {
         setIsAdmin(true);
-        window.api.getLivePresence().then(setLivePresence);
       }
     });
     const interval = setInterval(() => {
       if (document.hidden) return;
       window.api.getPlayerCount().then((c: number) => { if (c > 0) setPlayerCount(c); });
+      window.api.getLivePresence().then(setLivePresence);
     }, 300_000);
     return () => clearInterval(interval);
   }, []);
-
-  useEffect(() => {
-    if (!isAdmin) return;
-    const poll = setInterval(() => {
-      if (document.hidden) return;
-      window.api.getLivePresence().then(setLivePresence);
-    }, 30_000);
-    return () => clearInterval(poll);
-  }, [isAdmin]);
 
   async function handleShare() {
     try {
@@ -93,12 +85,12 @@ export function Navigation() {
             {copied ? 'Copied!' : 'Share with a Friend!'}
           </button>
         </div>
-        <div className="px-5 py-2 text-[10px] text-gray-600">v0.1.77</div>
+        <div className="px-5 py-2 text-[10px] text-gray-600">v0.1.78</div>
       </aside>
       <main className="flex-1 overflow-y-auto">
         <div className="h-[52px] shrink-0 drag relative">
           <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-3 no-drag">
-            {isAdmin && livePresence && (
+            {livePresence && (
               <>
                 <div className="flex items-center gap-1">
                   <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />

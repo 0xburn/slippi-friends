@@ -272,19 +272,16 @@ async function startAgentServices(identity: SlippiIdentity, userId: string): Pro
   friendPollTimer = setInterval(() => void pollAllNotifications(userId), 30_000);
   void pollAllNotifications(userId);
 
+  const NOTIF_POLL_NORMAL = 30_000;
+  const NOTIF_POLL_IN_GAME = 120_000;
+
   if (unsubGameActive) unsubGameActive();
   unsubGameActive = onGameActiveChange((inGame) => {
     if (!getSettings().reduceBackgroundActivity) return;
-    if (inGame) {
-      if (friendPollTimer) { clearInterval(friendPollTimer); friendPollTimer = null; }
-      console.log('[main] Game active — paused notification polling');
-    } else {
-      if (!friendPollTimer) {
-        friendPollTimer = setInterval(() => void pollAllNotifications(userId), 30_000);
-        void pollAllNotifications(userId);
-      }
-      console.log('[main] Game idle — resumed notification polling');
-    }
+    if (friendPollTimer) { clearInterval(friendPollTimer); friendPollTimer = null; }
+    const interval = inGame ? NOTIF_POLL_IN_GAME : NOTIF_POLL_NORMAL;
+    friendPollTimer = setInterval(() => void pollAllNotifications(userId), interval);
+    console.log(`[main] Game ${inGame ? 'active' : 'idle'} — notification poll interval: ${interval / 1000}s`);
   });
 }
 

@@ -170,7 +170,9 @@ export function Discover() {
   useEffect(() => {
     load();
     const interval = setInterval(() => { if (!document.hidden) load(); }, 30_000);
-    return () => clearInterval(interval);
+    const onVisible = () => { if (!document.hidden) load(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onVisible); };
   }, []);
 
   async function handleAdd(connectCode: string) {

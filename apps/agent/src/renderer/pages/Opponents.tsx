@@ -304,9 +304,13 @@ export function Opponents() {
       loadFriendCodes();
     }, POLL_INTERVAL);
 
+    const onVisible = () => { if (!document.hidden) loadFriendCodes(); };
+    document.addEventListener('visibilitychange', onVisible);
+
     return () => {
       unsub();
       clearInterval(pollRef.current);
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, []);
 
