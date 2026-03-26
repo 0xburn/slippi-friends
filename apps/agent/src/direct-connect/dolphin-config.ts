@@ -19,18 +19,28 @@ function slippiUserDirectoryCandidates(): string[] {
   const home = os.homedir();
   return process.platform === 'win32'
     ? [
-        path.join(home, 'AppData', 'Roaming', 'com.project-slippi.dolphin', 'netplay', 'User'),
+        // Mainline (stable or beta)
         path.join(home, 'AppData', 'Roaming', 'Slippi Launcher', 'netplay', 'User'),
+        path.join(home, 'AppData', 'Roaming', 'Slippi Launcher', 'netplay-beta', 'User'),
+        path.join(home, 'AppData', 'Roaming', 'com.project-slippi.dolphin', 'netplay', 'User'),
       ]
     : process.platform === 'darwin'
       ? [
+          // Mainline (stable or beta)
           path.join(home, 'Library', 'Application Support', 'com.project-slippi.dolphin', 'netplay', 'User'),
+          path.join(home, 'Library', 'Application Support', 'com.project-slippi.dolphin', 'netplay-beta', 'User'),
+          // Ishiiruka
           path.join(home, 'Library', 'Application Support', 'Slippi Launcher', 'netplay', 'User'),
         ]
       : [
+          // Mainline
+          path.join(home, '.config', 'slippi-dolphin', 'netplay'),
+          path.join(home, '.config', 'slippi-dolphin', 'netplay-beta'),
+          // Ishiiruka
           path.join(home, '.config', 'com.project-slippi.dolphin', 'netplay', 'User'),
           path.join(home, '.config', 'Slippi Launcher', 'netplay', 'User'),
           path.join(home, '.config', 'SlippiOnline'),
+          // System packages
           path.join(home, '.local', 'share', 'dolphin-emu', 'User'),
           path.join(home, '.local', 'share', 'slippi-dolphin', 'User'),
         ];

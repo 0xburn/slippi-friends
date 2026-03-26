@@ -304,13 +304,18 @@ export function Discover() {
           );
         })}
 
-        {players.length > visibleCount && (
+        {players.length > visibleCount && visibleCount < 100 && (
           <button
-            onClick={() => setVisibleCount((c) => c + 15)}
+            onClick={() => setVisibleCount((c) => Math.min(c + 15, 100))}
             className="w-full rounded-xl border border-[#2a2a2a] bg-[#141414] py-3 text-sm font-medium text-gray-400 hover:text-white hover:bg-[#1a1a1a] transition-colors"
           >
-            Load more ({players.length - visibleCount} remaining)
+            Load more
           </button>
+        )}
+        {players.length > 0 && (visibleCount >= players.length || visibleCount >= 100) && (
+          <p className="text-center text-xs text-gray-600 py-3">
+            Surely someone in this list is good enough for you!
+          </p>
         )}
       </div>
 

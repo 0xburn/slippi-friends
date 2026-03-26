@@ -5,7 +5,7 @@
  * Melee ISO path is read from Dolphin.ini (LastFilename / ISOPath0).
  */
 
-import { spawn } from 'child_process';
+import { execFile, spawn } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -17,6 +17,15 @@ const find = require('find-process') as (
   name: string,
   strict?: boolean,
 ) => Promise<Array<{ name: string; pid: number }>>;
+
+function scanForExe(dir: string, pattern: RegExp): string[] {
+  try {
+    if (!fs.existsSync(dir)) return [];
+    return fs.readdirSync(dir)
+      .filter((f) => pattern.test(f))
+      .map((f) => path.join(dir, f));
+  } catch { return []; }
+}
 
 function findAppImages(dir: string): string[] {
   try {
@@ -30,22 +39,37 @@ function findAppImages(dir: string): string[] {
 export function getDolphinExePath(): string | null {
   const home = os.homedir();
 
+  const launcherDir = process.platform === 'win32'
+    ? path.join(home, 'AppData', 'Roaming', 'Slippi Launcher')
+    : process.platform === 'darwin'
+      ? path.join(home, 'Library', 'Application Support', 'Slippi Launcher')
+      : path.join(home, '.config', 'Slippi Launcher');
+
   const candidates: string[] =
     process.platform === 'win32'
       ? [
-          path.join(home, 'AppData', 'Roaming', 'Slippi Launcher', 'netplay', 'Slippi Dolphin.exe'),
+          // Mainline (promoted to stable or beta)
+          ...scanForExe(path.join(launcherDir, 'netplay'), /dolphin\.exe$/i),
+          ...scanForExe(path.join(launcherDir, 'netplay-beta'), /dolphin\.exe$/i),
+          // Legacy explicit paths
+          path.join(launcherDir, 'netplay', 'Slippi Dolphin.exe'),
           path.join(home, 'AppData', 'Local', 'Programs', 'Slippi Launcher', 'netplay', 'Slippi Dolphin.exe'),
         ]
       : process.platform === 'darwin'
         ? [
-            path.join(home, 'Library', 'Application Support', 'Slippi Launcher', 'netplay',
-              'Slippi Dolphin.app', 'Contents', 'MacOS', 'Slippi Dolphin'),
+            // Mainline (Slippi_Dolphin.app with underscores)
+            path.join(launcherDir, 'netplay', 'Slippi_Dolphin.app', 'Contents', 'MacOS', 'Slippi_Dolphin'),
+            path.join(launcherDir, 'netplay-beta', 'Slippi_Dolphin.app', 'Contents', 'MacOS', 'Slippi_Dolphin'),
+            // Ishiiruka (Slippi Dolphin.app with spaces)
+            path.join(launcherDir, 'netplay', 'Slippi Dolphin.app', 'Contents', 'MacOS', 'Slippi Dolphin'),
+            path.join(launcherDir, 'netplay-beta', 'Slippi Dolphin.app', 'Contents', 'MacOS', 'Slippi Dolphin'),
             '/Applications/Slippi Dolphin.app/Contents/MacOS/Slippi Dolphin',
           ]
         : [
-            // Slippi Launcher managed
-            path.join(home, '.config', 'Slippi Launcher', 'netplay', 'Slippi_Dolphin'),
-            path.join(home, '.config', 'Slippi Launcher', 'netplay', 'squashfs-root', 'usr', 'bin', 'dolphin-emu'),
+            // Slippi Launcher managed (Ishiiruka + mainline)
+            path.join(launcherDir, 'netplay', 'Slippi_Dolphin'),
+            path.join(launcherDir, 'netplay', 'squashfs-root', 'usr', 'bin', 'dolphin-emu'),
+            path.join(launcherDir, 'netplay-beta', 'squashfs-root', 'usr', 'bin', 'dolphin-emu'),
             // AUR / system packages
             '/usr/bin/slippi-dolphin',
             '/usr/bin/dolphin-emu',
@@ -56,8 +80,9 @@ export function getDolphinExePath(): string | null {
             path.join(home, '.local', 'bin', 'slippi-dolphin'),
             // Flatpak
             path.join(home, '.var', 'app', 'io.github.nicoboss.dolphin-slippi', 'bin', 'dolphin-emu'),
-            // AppImage scan fallback
-            ...findAppImages(path.join(home, '.config', 'Slippi Launcher', 'netplay')),
+            // AppImage scan fallback (netplay + netplay-beta)
+            ...findAppImages(path.join(launcherDir, 'netplay')),
+            ...findAppImages(path.join(launcherDir, 'netplay-beta')),
           ];
 
   for (const p of candidates) {
@@ -66,17 +91,32 @@ export function getDolphinExePath(): string | null {
   return null;
 }
 
-export function getMeleeIsoPath(): string | null {
-  const userDir = getDolphinUserDir();
-  if (!userDir) return null;
+function getSlippiLauncherIsoPath(): string | null {
+  const home = os.homedir();
+  const settingsPaths = process.platform === 'win32'
+    ? [path.join(home, 'AppData', 'Roaming', 'Slippi Launcher', 'Settings')]
+    : process.platform === 'darwin'
+      ? [path.join(home, 'Library', 'Application Support', 'Slippi Launcher', 'Settings')]
+      : [path.join(home, '.config', 'Slippi Launcher', 'Settings')];
 
-  const iniPath = path.join(userDir, 'Config', 'Dolphin.ini');
-  if (!fs.existsSync(iniPath)) return null;
+  for (const p of settingsPaths) {
+    try {
+      if (!fs.existsSync(p)) continue;
+      const data = JSON.parse(fs.readFileSync(p, 'utf8'));
+      const isoPath = data?.settings?.isoPath;
+      if (isoPath && typeof isoPath === 'string' && fs.existsSync(isoPath)) {
+        console.log(`[dolphin-launcher] ISO from Slippi Launcher settings: ${isoPath}`);
+        return isoPath;
+      }
+    } catch { /* ignore */ }
+  }
+  return null;
+}
 
-  const content = fs.readFileSync(iniPath, 'utf8');
+function readIniValue(content: string, key: string): string | null {
   for (const line of content.split(/\r?\n/)) {
     const trimmed = line.trim();
-    if (trimmed.startsWith('LastFilename')) {
+    if (trimmed.startsWith(key)) {
       const eq = trimmed.indexOf('=');
       if (eq > 0) {
         const val = trimmed.slice(eq + 1).trim();
@@ -84,16 +124,35 @@ export function getMeleeIsoPath(): string | null {
       }
     }
   }
+  return null;
+}
 
-  for (const line of content.split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (trimmed.startsWith('ISOPath0')) {
-      const eq = trimmed.indexOf('=');
-      if (eq > 0) {
-        const val = trimmed.slice(eq + 1).trim();
-        if (val && fs.existsSync(val)) return val;
-      }
-    }
+const MELEE_PATTERNS = /melee|gale01|ssbm/i;
+
+export function getMeleeIsoPath(): string | null {
+  // Best source: Slippi Launcher's configured ISO path
+  const launcherIso = getSlippiLauncherIsoPath();
+  if (launcherIso) return launcherIso;
+
+  const userDir = getDolphinUserDir();
+  if (!userDir) return null;
+
+  const iniPath = path.join(userDir, 'Config', 'Dolphin.ini');
+  if (!fs.existsSync(iniPath)) return null;
+  const content = fs.readFileSync(iniPath, 'utf8');
+
+  // Prefer ISOPath0 (configured game directory entry)
+  const isoPath0 = readIniValue(content, 'ISOPath0');
+  if (isoPath0) return isoPath0;
+
+  // LastFilename only if it looks like Melee (not Uncle Punch, training packs, etc.)
+  const lastFile = readIniValue(content, 'LastFilename');
+  if (lastFile && MELEE_PATTERNS.test(path.basename(lastFile))) return lastFile;
+
+  // Last resort: return LastFilename even if it doesn't match, better than nothing
+  if (lastFile) {
+    console.warn(`[dolphin-launcher] LastFilename doesn't look like Melee: ${lastFile}`);
+    return lastFile;
   }
 
   return null;
@@ -168,11 +227,15 @@ export function launchDolphin(overrideUserDir?: string): void {
 
   console.log(`[dolphin-launcher] Launching: "${exePath}" ${args.map(a => `"${a}"`).join(' ')}`);
 
-  const child = spawn(exePath, args, {
-    detached: true,
-    stdio: 'ignore',
-  });
-  child.unref();
+  // macOS: use execFile to avoid spawn deadlocks in Dolphin's rendering
+  // (matches how the Slippi Launcher handles this)
+  if (process.platform === 'darwin') {
+    const child = execFile(exePath, args, { maxBuffer: 100 * 1000 * 1000 });
+    child.unref();
+  } else {
+    const child = spawn(exePath, args, { detached: true, stdio: 'ignore' });
+    child.unref();
+  }
 }
 
 function sleep(ms: number): Promise<void> {
