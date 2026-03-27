@@ -1,9 +1,6 @@
 import { BrowserWindow, Notification } from 'electron';
 import { getSettings } from './settings';
-
-const { characters } = require('@slippi/slippi-js') as {
-  characters: typeof import('@slippi/slippi-js').characters;
-};
+import { getCurrentStatus } from './presence';
 
 function playNotificationSound(): void {
   try {
@@ -15,34 +12,8 @@ function playNotificationSound(): void {
   } catch {}
 }
 
-function characterLabel(characterId: number): string {
-  try {
-    const name = characters.getCharacterName(characterId);
-    if (name) return name;
-  } catch {
-    /* ignore */
-  }
-  return `Character ${characterId}`;
-}
-
-export function showOpponentNotification(
-  opponentCode: string,
-  opponentName: string,
-  characterId: number,
-): void {
-  try {
-    if (!Notification.isSupported()) return;
-    const charName = characterLabel(characterId);
-    const n = new Notification({
-      title: 'friendlies',
-      body: `${opponentName || opponentCode} (${opponentCode}) — ${charName}`,
-      silent: true,
-    });
-    n.show();
-    playNotificationSound();
-  } catch (e) {
-    console.error('showOpponentNotification failed', e);
-  }
+function shouldSuppressToast(): boolean {
+  return process.platform === 'win32' && getCurrentStatus() === 'in-game';
 }
 
 export function showFriendOnlineNotification(
@@ -51,13 +22,16 @@ export function showFriendOnlineNotification(
 ): void {
   try {
     if (!Notification.isSupported()) return;
-    const label = newStatus === 'in-game' ? 'is now in game' : 'is now online';
-    const n = new Notification({
-      title: 'friendlies',
-      body: `${connectCode} ${label}`,
-      silent: true,
-    });
-    n.show();
+    const suppress = shouldSuppressToast();
+    if (!suppress) {
+      const label = newStatus === 'in-game' ? 'is now in game' : 'is now online';
+      const n = new Notification({
+        title: 'friendlies',
+        body: `${connectCode} ${label}`,
+        silent: true,
+      });
+      n.show();
+    }
     playNotificationSound();
   } catch (e) {
     console.error('showFriendOnlineNotification failed', e);
@@ -70,13 +44,16 @@ export function showFriendRequestNotification(
 ): void {
   try {
     if (!Notification.isSupported()) return;
-    const n = new Notification({
-      title: 'friendlies',
-      body: `${fromCode} sent you a friend request`,
-      silent: true,
-    });
-    if (onClick) n.on('click', onClick);
-    n.show();
+    const suppress = shouldSuppressToast();
+    if (!suppress) {
+      const n = new Notification({
+        title: 'friendlies',
+        body: `${fromCode} sent you a friend request`,
+        silent: true,
+      });
+      if (onClick) n.on('click', onClick);
+      n.show();
+    }
     playNotificationSound();
   } catch (e) {
     console.error('showFriendRequestNotification failed', e);
@@ -89,13 +66,16 @@ export function showPlayInviteNotification(
 ): void {
   try {
     if (!Notification.isSupported()) return;
-    const n = new Notification({
-      title: 'friendlies',
-      body: `${fromCode} wants to play!`,
-      silent: true,
-    });
-    if (onClick) n.on('click', onClick);
-    n.show();
+    const suppress = shouldSuppressToast();
+    if (!suppress) {
+      const n = new Notification({
+        title: 'friendlies',
+        body: `${fromCode} wants to play!`,
+        silent: true,
+      });
+      if (onClick) n.on('click', onClick);
+      n.show();
+    }
     playNotificationSound();
   } catch (e) {
     console.error('showPlayInviteNotification failed', e);
@@ -109,13 +89,16 @@ export function showNudgeNotification(
 ): void {
   try {
     if (!Notification.isSupported()) return;
-    const n = new Notification({
-      title: 'friendlies',
-      body: `${fromCode}: ${message}`,
-      silent: true,
-    });
-    if (onClick) n.on('click', onClick);
-    n.show();
+    const suppress = shouldSuppressToast();
+    if (!suppress) {
+      const n = new Notification({
+        title: 'friendlies',
+        body: `${fromCode}: ${message}`,
+        silent: true,
+      });
+      if (onClick) n.on('click', onClick);
+      n.show();
+    }
     playNotificationSound();
   } catch (e) {
     console.error('showNudgeNotification failed', e);

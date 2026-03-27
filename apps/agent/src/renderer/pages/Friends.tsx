@@ -306,7 +306,8 @@ export function Friends() {
     }
 
     function sortScore(f: typeof list[0]): number {
-      if (f.lookingToPlay) return -1;
+      if (f.lookingToPlay && !f.opponentCode) return -2;
+      if (f.lookingToPlay && f.opponentCode) return -1;
       const s = f.status || 'offline';
       if (s === 'in-game' && f.currentCharacter != null) return 0;
       if (s === 'in-game') return 1;

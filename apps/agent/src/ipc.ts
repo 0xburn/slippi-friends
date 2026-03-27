@@ -780,7 +780,7 @@ export function registerIpcHandlers(
       const myRegion = myProfile?.region as string | null ?? null;
       const myCountry = myRegion?.split(',').pop()?.trim() ?? null;
 
-      const results = presenceRows
+      let results = presenceRows
         .filter((r: any) => profileMap[r.user_id])
         .map((r: any) => {
           const p = profileMap[r.user_id];
@@ -802,8 +802,8 @@ export function registerIpcHandlers(
 
           const resolved = resolvePresenceRow(r as any, PRESENCE_STALE_THRESHOLD, Date.now());
 
-          // Boost active players: LFG / status preset users appear ~60% closer
-          if (resolved.statusPreset || resolved.lookingToPlay) distance *= 0.4;
+          // Boost active players: LFG / status preset users appear ~30% closer
+          if (resolved.statusPreset || resolved.lookingToPlay) distance *= 0.7;
           return {
             userId: p.id,
             connectCode: p.connect_code,
@@ -827,13 +827,21 @@ export function registerIpcHandlers(
           };
         });
 
+      const MAX_DISTANCE = 2000;
+      results = results.filter((r: any) => r.distance <= MAX_DISTANCE);
+
       results.sort((a: any, b: any) => {
         const hasHistoryA = a.lastPlayedAt ? 1 : 0;
         const hasHistoryB = b.lastPlayedAt ? 1 : 0;
         if (hasHistoryA !== hasHistoryB) return hasHistoryB - hasHistoryA;
-        const statusA = (a.statusPreset || a.lookingToPlay) ? 1 : 0;
-        const statusB = (b.statusPreset || b.lookingToPlay) ? 1 : 0;
-        if (statusA !== statusB) return statusB - statusA;
+        const hasStatusA = (a.statusPreset || a.lookingToPlay) ? 1 : 0;
+        const hasStatusB = (b.statusPreset || b.lookingToPlay) ? 1 : 0;
+        if (hasStatusA !== hasStatusB) return hasStatusB - hasStatusA;
+        if (hasStatusA && hasStatusB) {
+          const inGameA = a.opponentCode ? 1 : 0;
+          const inGameB = b.opponentCode ? 1 : 0;
+          if (inGameA !== inGameB) return inGameA - inGameB;
+        }
         return a.distance - b.distance;
       });
 

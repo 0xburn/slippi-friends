@@ -63,12 +63,15 @@ export function PlayerCard({ player, showStatus = true, expandable = true, onCli
   }
 
   const isLfg = !!player.lookingToPlay;
+  const isInGameWithStatus = isLfg && !!player.opponentCode;
 
   return (
     <div className={`rounded-xl border overflow-hidden transition-all ${
-      isLfg
+      isInGameWithStatus
         ? 'border-amber-500/40 bg-amber-500/5 hover:border-amber-500/60 hover:shadow-[0_0_30px_rgba(245,158,11,0.12)]'
-        : 'border-[#2a2a2a] bg-[#141414] hover:border-[#21BA45]/30 hover:shadow-[0_0_30px_rgba(33,186,69,0.1)]'
+        : isLfg
+          ? 'border-[#21BA45]/40 bg-[#21BA45]/5 hover:border-[#21BA45]/60 hover:shadow-[0_0_30px_rgba(33,186,69,0.12)]'
+          : 'border-[#2a2a2a] bg-[#141414] hover:border-[#21BA45]/30 hover:shadow-[0_0_30px_rgba(33,186,69,0.1)]'
     }`}>
       <div onClick={handleClick}
         className="group flex items-center gap-4 p-4 cursor-pointer">
@@ -127,13 +130,14 @@ export function PlayerCard({ player, showStatus = true, expandable = true, onCli
             {player.region && (
               <span className="text-[10px] text-gray-600 truncate">{player.region}</span>
             )}
-            {player.statusPreset && (
-              <span className="text-[10px] font-medium text-amber-400/80 truncate">{player.statusPreset}</span>
-            )}
-            {isLfg && !player.statusPreset && (
-              <span className="text-[10px] font-medium text-amber-400/80 truncate">Looking to play</span>
-            )}
           </div>
+          {(player.statusPreset || (isLfg && !player.statusPreset)) && (
+            <div className="min-w-0">
+              <span className={`text-[10px] font-medium ${isInGameWithStatus ? 'text-amber-400/80' : 'text-[#21BA45]/80'}`}>
+                {player.statusPreset || 'Looking to play'}
+              </span>
+            </div>
+          )}
         </div>
         {player.topCharacters && player.topCharacters.length > 0 && (
           <div className="flex items-center gap-0.5 shrink-0">

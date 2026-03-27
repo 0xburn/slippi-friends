@@ -66,8 +66,10 @@ export function detectConnectionType(): ConnectionType {
 
   if (process.platform === 'win32') {
     const lower = activeIfaces.map((i) => i.name.toLowerCase());
-    if (lower.some((n) => n.includes('wi-fi') || n.includes('wifi') || n.includes('wireless') || n.includes('wlan'))) return 'wifi';
-    if (lower.some((n) => n.includes('ethernet') || n.includes('local area'))) return 'ethernet';
+    const hasEthernet = lower.some((n) => n.includes('ethernet') || n.includes('local area'));
+    const hasWifi = lower.some((n) => n.includes('wi-fi') || n.includes('wifi') || n.includes('wireless') || n.includes('wlan'));
+    if (hasEthernet) return 'ethernet';
+    if (hasWifi) return 'wifi';
     return null;
   }
 
