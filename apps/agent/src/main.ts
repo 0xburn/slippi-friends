@@ -30,6 +30,7 @@ const previousFriendStatuses = new Map<string, string>();
 const knownIncomingRequestIds = new Set<string>();
 const knownPlayInviteIds = new Set<string>();
 const knownNudgeIds = new Set<string>();
+let unreadNudgeCount = 0;
 
 function parseDotEnvContent(content: string): void {
   for (const line of content.split(/\r?\n/)) {
@@ -147,6 +148,7 @@ async function stopAgentServices(): Promise<void> {
   knownIncomingRequestIds.clear();
   knownPlayInviteIds.clear();
   knownNudgeIds.clear();
+  unreadNudgeCount = 0;
   try { await stopPresenceLoop(); } catch (e) { console.error('stopPresenceLoop', e); }
   stopWatcher();
 }
@@ -306,17 +308,20 @@ async function pollNudges(userId: string, suppressNotifs = false): Promise<void>
 
     for (const nudge of newNudges) {
       knownNudgeIds.add(nudge.id);
-      if (suppressNotifs) continue;
-      if (serviceStartedAt && nudge.created_at < serviceStartedAt) continue;
-      const fromCode = profileMap[nudge.sender_id];
-      if (!fromCode) continue;
-      showNudgeNotification(fromCode, nudge.message, () => {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.show();
-          mainWindow.focus();
+      if (!suppressNotifs && serviceStartedAt && nudge.created_at >= serviceStartedAt) {
+        unreadNudgeCount++;
+        const fromCode = profileMap[nudge.sender_id];
+        if (fromCode) {
+          showNudgeNotification(fromCode, nudge.message, () => {
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.show();
+              mainWindow.focus();
+            }
+          });
         }
-      });
+      }
     }
+    sendToRenderer('nudge:unreadCount', unreadNudgeCount);
   } catch (e) { console.error('[main] nudge poll failed', e); }
 }
 
@@ -506,7 +511,11 @@ app.whenReady().then(async () => {
 
     ipcMain.handle('nudge:markSeen', (_e, ids: string[]) => {
       if (Array.isArray(ids)) ids.forEach((id) => knownNudgeIds.add(id));
+      unreadNudgeCount = 0;
+      sendToRenderer('nudge:unreadCount', 0);
     });
+
+    ipcMain.handle('nudge:unreadCount', () => unreadNudgeCount);
 
     if (!isDev) {
       initAutoUpdater(mainWindow);

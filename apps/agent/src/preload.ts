@@ -94,6 +94,8 @@ const api = {
   getNudges: () => ipcRenderer.invoke('nudge:list') as Promise<any[]>,
   markNudgesSeen: (ids: string[]) => ipcRenderer.invoke('nudge:markSeen', ids),
   getSentNudges: () => ipcRenderer.invoke('nudge:listSent') as Promise<any[]>,
+  getUnreadNudgeCount: () => ipcRenderer.invoke('nudge:unreadCount') as Promise<number>,
+  onUnreadNudgeCount: (cb: (count: number) => void): Unsubscribe => onEvent('nudge:unreadCount', cb),
 
   testNotification: () => ipcRenderer.invoke('notifications:test'),
 };

@@ -22,17 +22,20 @@ export function Navigation() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [livePresence, setLivePresence] = useState<{ online: number; inGame: number } | null>(null);
   const [nudgesDisabled, setNudgesDisabled] = useState(false);
+  const [unreadNudges, setUnreadNudges] = useState(0);
 
   useEffect(() => {
     window.api.getPlayerCount().then((c: number) => { if (c > 0) setPlayerCount(c); });
     window.api.getBroadcast().then((msg: string | null) => setBroadcast(msg));
     window.api.getLivePresence().then(setLivePresence);
     window.api.getSettings().then((s: any) => { setNudgesDisabled(!!s.disableNudges); });
+    window.api.getUnreadNudgeCount().then(setUnreadNudges);
     window.api.getIdentity().then((id: any) => {
       if (id?.connectCode && ADMIN_CODES.includes(id.connectCode)) {
         setIsAdmin(true);
       }
     });
+    const unsubNudges = window.api.onUnreadNudgeCount(setUnreadNudges);
     function refreshStats() {
       window.api.getPlayerCount().then((c: number) => { if (c > 0) setPlayerCount(c); });
       window.api.getLivePresence().then(setLivePresence);
@@ -41,7 +44,7 @@ export function Navigation() {
     const interval = setInterval(refreshStats, 300_000);
     const onVisible = () => { if (!document.hidden) refreshStats(); };
     document.addEventListener('visibilitychange', onVisible);
-    return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onVisible); };
+    return () => { unsubNudges(); clearInterval(interval); document.removeEventListener('visibilitychange', onVisible); };
   }, []);
 
   async function handleShare() {
@@ -79,6 +82,11 @@ export function Navigation() {
             >
               <span className="text-base">{link.icon}</span>
               {link.label}
+              {link.to === '/ggs' && unreadNudges > 0 && (
+                <span className="ml-auto min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-[#21BA45] text-[10px] font-bold text-white px-1">
+                  {unreadNudges > 99 ? '99+' : unreadNudges}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>
@@ -91,7 +99,7 @@ export function Navigation() {
             {copied ? 'Copied!' : 'Share with a Friend!'}
           </button>
         </div>
-        <div className="px-5 py-2 text-[10px] text-gray-600">v0.1.94</div>
+        <div className="px-5 py-2 text-[10px] text-gray-600">v0.1.95</div>
       </aside>
       <main className="flex-1 overflow-y-auto">
         <div className="h-[52px] shrink-0 drag relative">
