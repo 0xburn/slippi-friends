@@ -3,6 +3,7 @@ import { ConnectionTypeIcon } from '../components/ConnectionTypeIcon';
 import { OnlineIndicator } from '../components/OnlineIndicator';
 import { PlayerCard } from '../components/PlayerCard';
 import { RankBadge } from '../components/RankBadge';
+import { CharacterIcon } from '../components/CharacterIcon';
 import { CHARACTER_MAP, getCharacterImagePath, getCharacterShortName } from '../lib/characters';
 
 interface Friend {
@@ -638,11 +639,11 @@ export function Friends() {
               <span className="text-[10px] text-gray-500 uppercase tracking-wider">Main</span>
               <button
                 onClick={() => { setMainPickerOpen(!mainPickerOpen); setSecondaryPickerOpen(false); }}
-                className="flex items-center gap-2 mt-1 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] pl-1 pr-2.5 py-0.5 hover:border-[#3a3a3a] transition-colors"
+                className="flex items-center gap-2 mt-1 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] px-0.5 py-1.5 hover:border-[#3a3a3a] transition-colors"
               >
                 {myChosenMain != null ? (
                   <>
-                    {getCharacterImagePath(myChosenMain) && <img src={getCharacterImagePath(myChosenMain)} alt="" className="w-10 h-10 object-contain" />}
+                    <CharacterIcon characterId={myChosenMain} size="md" />
                     <span className="text-xs text-white">{getCharacterShortName(myChosenMain)}</span>
                   </>
                 ) : (
@@ -673,7 +674,7 @@ export function Friends() {
                           myChosenMain === id ? 'text-[#21BA45] bg-[#21BA45]/10' : 'text-gray-300 hover:text-white hover:bg-white/5'
                         }`}
                       >
-                        {getCharacterImagePath(id) && <img src={getCharacterImagePath(id)} alt="" className="w-8 h-8 object-contain" />}
+                        {getCharacterImagePath(id) && <img src={getCharacterImagePath(id)} alt="" className="w-10 h-10 object-contain" />}
                         {CHARACTER_MAP[id]}
                       </button>
                     ))}
