@@ -1,8 +1,12 @@
 /**
  * Finds, launches, and kills Slippi Dolphin.
  *
- * Dolphin executable is located via known install paths.
- * Melee ISO path is read from Dolphin.ini (LastFilename / ISOPath0).
+ * Dolphin executable is resolved by reading the Slippi Launcher's Settings
+ * file to determine whether the user is on Mainline or Ishiiruka, then
+ * looking in the correct install folder. Falls back to scanning if Settings
+ * can't be read.
+ *
+ * Melee ISO path is read from the Launcher Settings, then Dolphin.ini.
  */
 
 import { execFile, spawn } from 'child_process';
@@ -18,97 +22,158 @@ const find = require('find-process') as (
   strict?: boolean,
 ) => Promise<Array<{ name: string; pid: number }>>;
 
-function scanForExe(dir: string, pattern: RegExp): string[] {
-  try {
-    if (!fs.existsSync(dir)) return [];
-    return fs.readdirSync(dir)
-      .filter((f) => pattern.test(f))
-      .map((f) => path.join(dir, f));
-  } catch { return []; }
+// ---------------------------------------------------------------------------
+// Slippi Launcher Settings reader
+// ---------------------------------------------------------------------------
+
+interface LauncherSettings {
+  netplayPromotedToStable?: boolean;
+  settings?: {
+    useNetplayBeta?: boolean;
+    isoPath?: string | null;
+  };
 }
 
-function findAppImages(dir: string): string[] {
-  try {
-    if (!fs.existsSync(dir)) return [];
-    return fs.readdirSync(dir)
-      .filter((f) => /slippi.*\.appimage$/i.test(f))
-      .map((f) => path.join(dir, f));
-  } catch { return []; }
-}
-
-export function getDolphinExePath(): string | null {
+function getLauncherDir(): string {
   const home = os.homedir();
-
-  const launcherDir = process.platform === 'win32'
+  return process.platform === 'win32'
     ? path.join(home, 'AppData', 'Roaming', 'Slippi Launcher')
     : process.platform === 'darwin'
       ? path.join(home, 'Library', 'Application Support', 'Slippi Launcher')
       : path.join(home, '.config', 'Slippi Launcher');
+}
 
-  const candidates: string[] =
-    process.platform === 'win32'
-      ? [
-          // Mainline (promoted to stable or beta)
-          ...scanForExe(path.join(launcherDir, 'netplay'), /dolphin\.exe$/i),
-          ...scanForExe(path.join(launcherDir, 'netplay-beta'), /dolphin\.exe$/i),
-          // Legacy explicit paths
-          path.join(launcherDir, 'netplay', 'Slippi Dolphin.exe'),
-          path.join(home, 'AppData', 'Local', 'Programs', 'Slippi Launcher', 'netplay', 'Slippi Dolphin.exe'),
-        ]
-      : process.platform === 'darwin'
-        ? [
-            // Mainline (Slippi_Dolphin.app with underscores)
-            path.join(launcherDir, 'netplay', 'Slippi_Dolphin.app', 'Contents', 'MacOS', 'Slippi_Dolphin'),
-            path.join(launcherDir, 'netplay-beta', 'Slippi_Dolphin.app', 'Contents', 'MacOS', 'Slippi_Dolphin'),
-            // Ishiiruka (Slippi Dolphin.app with spaces)
-            path.join(launcherDir, 'netplay', 'Slippi Dolphin.app', 'Contents', 'MacOS', 'Slippi Dolphin'),
-            path.join(launcherDir, 'netplay-beta', 'Slippi Dolphin.app', 'Contents', 'MacOS', 'Slippi Dolphin'),
-            '/Applications/Slippi Dolphin.app/Contents/MacOS/Slippi Dolphin',
-          ]
-        : [
-            // Slippi Launcher managed (Ishiiruka + mainline)
-            path.join(launcherDir, 'netplay', 'Slippi_Dolphin'),
-            path.join(launcherDir, 'netplay', 'squashfs-root', 'usr', 'bin', 'dolphin-emu'),
-            path.join(launcherDir, 'netplay-beta', 'squashfs-root', 'usr', 'bin', 'dolphin-emu'),
-            // AUR / system packages
-            '/usr/bin/slippi-dolphin',
-            '/usr/bin/dolphin-emu',
-            '/usr/local/bin/slippi-dolphin',
-            '/usr/local/bin/dolphin-emu',
-            // User-local installs
-            path.join(home, '.local', 'bin', 'Slippi_Dolphin'),
-            path.join(home, '.local', 'bin', 'slippi-dolphin'),
-            // Flatpak
-            path.join(home, '.var', 'app', 'io.github.nicoboss.dolphin-slippi', 'bin', 'dolphin-emu'),
-            // AppImage scan fallback (netplay + netplay-beta)
-            ...findAppImages(path.join(launcherDir, 'netplay')),
-            ...findAppImages(path.join(launcherDir, 'netplay-beta')),
-          ];
+function readLauncherSettings(): LauncherSettings | null {
+  try {
+    const settingsPath = path.join(getLauncherDir(), 'Settings');
+    if (!fs.existsSync(settingsPath)) return null;
+    return JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+  } catch { return null; }
+}
 
-  for (const p of candidates) {
-    if (fs.existsSync(p)) return p;
+type DolphinVariant = 'mainline' | 'ishiiruka';
+
+/**
+ * Mirrors the Slippi Launcher's DolphinManager.getInstallation() logic:
+ *  - promotedToStable || useNetplayBeta → Mainline
+ *  - otherwise → Ishiiruka
+ */
+function detectDolphinVariant(settings: LauncherSettings | null): { variant: DolphinVariant; betaSuffix: string } {
+  const promotedToStable = settings?.netplayPromotedToStable ?? false;
+  const useNetplayBeta = settings?.settings?.useNetplayBeta ?? false;
+
+  if (promotedToStable || useNetplayBeta) {
+    const betaSuffix = promotedToStable ? '' : '-beta';
+    return { variant: 'mainline', betaSuffix };
   }
+  return { variant: 'ishiiruka', betaSuffix: '' };
+}
+
+function scanDirForFile(dir: string, match: (name: string) => boolean): string | null {
+  try {
+    if (!fs.existsSync(dir)) return null;
+    const hit = fs.readdirSync(dir).find(match);
+    return hit ? path.join(dir, hit) : null;
+  } catch { return null; }
+}
+
+/**
+ * Find the Dolphin executable inside the given install folder, using the
+ * same filename conventions the Slippi Launcher uses for each variant.
+ */
+function findExeInFolder(folder: string, variant: DolphinVariant): string | null {
+  if (!fs.existsSync(folder)) return null;
+
+  if (process.platform === 'win32') {
+    // Both variants scan for any file ending in Dolphin.exe
+    const exe = scanDirForFile(folder, (f) => /dolphin\.exe$/i.test(f));
+    return exe;
+  }
+
+  if (process.platform === 'darwin') {
+    if (variant === 'mainline') {
+      const p = path.join(folder, 'Slippi_Dolphin.app', 'Contents', 'MacOS', 'Slippi_Dolphin');
+      return fs.existsSync(p) ? p : null;
+    }
+    const p = path.join(folder, 'Slippi Dolphin.app', 'Contents', 'MacOS', 'Slippi Dolphin');
+    return fs.existsSync(p) ? p : null;
+  }
+
+  // Linux
+  if (variant === 'mainline') {
+    const appImage = scanDirForFile(folder, (f) =>
+      (f.startsWith('Slippi_Netplay') && f.endsWith('.AppImage')) || f === 'dolphin-emu',
+    );
+    if (appImage) return appImage;
+    const squash = path.join(folder, 'squashfs-root', 'usr', 'bin', 'dolphin-emu');
+    return fs.existsSync(squash) ? squash : null;
+  }
+  // Ishiiruka
+  const appImage = scanDirForFile(folder, (f) =>
+    (f.startsWith('Slippi_Online') && f.endsWith('.AppImage')) || f === 'dolphin-emu',
+  );
+  if (appImage) return appImage;
+  const legacy = path.join(folder, 'Slippi_Dolphin');
+  return fs.existsSync(legacy) ? legacy : null;
+}
+
+export function getDolphinExePath(): string | null {
+  const launcherDir = getLauncherDir();
+  const settings = readLauncherSettings();
+  const { variant, betaSuffix } = detectDolphinVariant(settings);
+  const folder = path.join(launcherDir, `netplay${betaSuffix}`);
+
+  console.log(`[dolphin-launcher] Detected variant=${variant}, folder=netplay${betaSuffix}`);
+
+  // Primary: honor the Launcher's configured variant & folder
+  const primary = findExeInFolder(folder, variant);
+  if (primary) return primary;
+
+  // If the settings-based lookup failed, try the other variant in the same
+  // folder — handles edge cases where the binary name doesn't match our
+  // expectation (e.g. a manual install).
+  const otherVariant: DolphinVariant = variant === 'mainline' ? 'ishiiruka' : 'mainline';
+  const secondary = findExeInFolder(folder, otherVariant);
+  if (secondary) {
+    console.warn(`[dolphin-launcher] Expected ${variant} but found ${otherVariant} exe in ${folder}`);
+    return secondary;
+  }
+
+  // Last resort: try the alternate folder (netplay-beta if we tried netplay, etc.)
+  const altSuffix = betaSuffix === '' ? '-beta' : '';
+  const altFolder = path.join(launcherDir, `netplay${altSuffix}`);
+  for (const v of [variant, otherVariant] as DolphinVariant[]) {
+    const fallback = findExeInFolder(altFolder, v);
+    if (fallback) {
+      console.warn(`[dolphin-launcher] Fell back to netplay${altSuffix} (${v})`);
+      return fallback;
+    }
+  }
+
+  // Linux system-package fallback
+  if (process.platform === 'linux') {
+    const systemPaths = [
+      '/usr/bin/slippi-dolphin',
+      '/usr/bin/dolphin-emu',
+      '/usr/local/bin/slippi-dolphin',
+      '/usr/local/bin/dolphin-emu',
+      path.join(os.homedir(), '.local', 'bin', 'Slippi_Dolphin'),
+      path.join(os.homedir(), '.local', 'bin', 'slippi-dolphin'),
+    ];
+    for (const p of systemPaths) {
+      if (fs.existsSync(p)) return p;
+    }
+  }
+
   return null;
 }
 
 function getSlippiLauncherIsoPath(): string | null {
-  const home = os.homedir();
-  const settingsPaths = process.platform === 'win32'
-    ? [path.join(home, 'AppData', 'Roaming', 'Slippi Launcher', 'Settings')]
-    : process.platform === 'darwin'
-      ? [path.join(home, 'Library', 'Application Support', 'Slippi Launcher', 'Settings')]
-      : [path.join(home, '.config', 'Slippi Launcher', 'Settings')];
-
-  for (const p of settingsPaths) {
-    try {
-      if (!fs.existsSync(p)) continue;
-      const data = JSON.parse(fs.readFileSync(p, 'utf8'));
-      const isoPath = data?.settings?.isoPath;
-      if (isoPath && typeof isoPath === 'string' && fs.existsSync(isoPath)) {
-        console.log(`[dolphin-launcher] ISO from Slippi Launcher settings: ${isoPath}`);
-        return isoPath;
-      }
-    } catch { /* ignore */ }
+  const settings = readLauncherSettings();
+  const isoPath = settings?.settings?.isoPath;
+  if (isoPath && typeof isoPath === 'string' && fs.existsSync(isoPath)) {
+    console.log(`[dolphin-launcher] ISO from Slippi Launcher settings: ${isoPath}`);
+    return isoPath;
   }
   return null;
 }

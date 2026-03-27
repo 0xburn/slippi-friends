@@ -2,6 +2,8 @@
  * Dolphin configuration helpers for direct connect.
  *
  * Resolves the real Dolphin User directory and the Slippi config directory.
+ * Reads the Slippi Launcher's Settings file to determine Mainline vs
+ * Ishiiruka, matching the Launcher's own resolution logic.
  * Injects a connect code into Slippi's direct-codes.json so it appears as
  * the first autocomplete suggestion on the in-game code entry screen.
  */
@@ -15,42 +17,92 @@ import { getSlippiUserJsonPaths } from '../config';
 // Dolphin User directory resolution
 // ---------------------------------------------------------------------------
 
+function readLauncherSettings(): { promotedToStable: boolean; useBeta: boolean } {
+  try {
+    const home = os.homedir();
+    const launcherDir = process.platform === 'win32'
+      ? path.join(home, 'AppData', 'Roaming', 'Slippi Launcher')
+      : process.platform === 'darwin'
+        ? path.join(home, 'Library', 'Application Support', 'Slippi Launcher')
+        : path.join(home, '.config', 'Slippi Launcher');
+    const settingsPath = path.join(launcherDir, 'Settings');
+    if (!fs.existsSync(settingsPath)) return { promotedToStable: false, useBeta: false };
+    const data = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    return {
+      promotedToStable: data?.netplayPromotedToStable ?? false,
+      useBeta: data?.settings?.useNetplayBeta ?? false,
+    };
+  } catch { return { promotedToStable: false, useBeta: false }; }
+}
+
+/**
+ * Build user-directory candidates ordered by what the Launcher settings say.
+ *
+ * Mainline user dirs (from Slippi Launcher source):
+ *   win32:  {launcherDir}/netplay{suffix}/User
+ *   darwin: ~/Library/Application Support/com.project-slippi.dolphin/netplay{suffix}/User
+ *   linux:  ~/.config/slippi-dolphin/netplay{suffix}
+ *
+ * Ishiiruka user dirs:
+ *   win32:  {launcherDir}/netplay/User
+ *   darwin: ~/Library/Application Support/com.project-slippi.dolphin/netplay/User
+ *   linux:  ~/.config/SlippiOnline
+ */
 function slippiUserDirectoryCandidates(): string[] {
   const home = os.homedir();
-  return process.platform === 'win32'
-    ? [
-        // Mainline (stable or beta)
-        path.join(home, 'AppData', 'Roaming', 'Slippi Launcher', 'netplay', 'User'),
-        path.join(home, 'AppData', 'Roaming', 'Slippi Launcher', 'netplay-beta', 'User'),
-        path.join(home, 'AppData', 'Roaming', 'com.project-slippi.dolphin', 'netplay', 'User'),
-      ]
+  const { promotedToStable, useBeta } = readLauncherSettings();
+  const isMainline = promotedToStable || useBeta;
+  const betaSuffix = (isMainline && !promotedToStable) ? '-beta' : '';
+
+  const launcherDir = process.platform === 'win32'
+    ? path.join(home, 'AppData', 'Roaming', 'Slippi Launcher')
     : process.platform === 'darwin'
-      ? [
-          // Mainline (stable or beta)
-          path.join(home, 'Library', 'Application Support', 'com.project-slippi.dolphin', 'netplay', 'User'),
-          path.join(home, 'Library', 'Application Support', 'com.project-slippi.dolphin', 'netplay-beta', 'User'),
-          // Ishiiruka
-          path.join(home, 'Library', 'Application Support', 'Slippi Launcher', 'netplay', 'User'),
-        ]
-      : [
-          // Mainline
-          path.join(home, '.config', 'slippi-dolphin', 'netplay'),
-          path.join(home, '.config', 'slippi-dolphin', 'netplay-beta'),
-          // Ishiiruka
-          path.join(home, '.config', 'com.project-slippi.dolphin', 'netplay', 'User'),
-          path.join(home, '.config', 'Slippi Launcher', 'netplay', 'User'),
-          path.join(home, '.config', 'SlippiOnline'),
-          // System packages
-          path.join(home, '.local', 'share', 'dolphin-emu', 'User'),
-          path.join(home, '.local', 'share', 'slippi-dolphin', 'User'),
-        ];
+      ? path.join(home, 'Library', 'Application Support', 'Slippi Launcher')
+      : path.join(home, '.config', 'Slippi Launcher');
+
+  if (process.platform === 'win32') {
+    const primary = path.join(launcherDir, `netplay${betaSuffix}`, 'User');
+    const others = [
+      path.join(launcherDir, 'netplay', 'User'),
+      path.join(launcherDir, 'netplay-beta', 'User'),
+    ].filter((p) => p !== primary);
+    return [primary, ...others];
+  }
+
+  if (process.platform === 'darwin') {
+    const configPath = path.join(home, 'Library', 'Application Support', 'com.project-slippi.dolphin');
+    const primary = path.join(configPath, `netplay${betaSuffix}`, 'User');
+    const others = [
+      path.join(configPath, 'netplay', 'User'),
+      path.join(configPath, 'netplay-beta', 'User'),
+    ].filter((p) => p !== primary);
+    return [primary, ...others];
+  }
+
+  // Linux: Mainline and Ishiiruka use entirely different paths
+  if (isMainline) {
+    return [
+      path.join(home, '.config', 'slippi-dolphin', `netplay${betaSuffix}`),
+      path.join(home, '.config', 'slippi-dolphin', 'netplay'),
+      path.join(home, '.config', 'slippi-dolphin', 'netplay-beta'),
+      path.join(home, '.config', 'SlippiOnline'),
+      path.join(home, '.config', 'Slippi Launcher', 'netplay', 'User'),
+    ];
+  }
+  return [
+    path.join(home, '.config', 'SlippiOnline'),
+    path.join(home, '.config', 'Slippi Launcher', 'netplay', 'User'),
+    path.join(home, '.config', 'slippi-dolphin', 'netplay'),
+    path.join(home, '.config', 'slippi-dolphin', 'netplay-beta'),
+  ];
 }
 
 export function getDolphinUserDir(): string | null {
-  for (const dir of slippiUserDirectoryCandidates()) {
+  const candidates = slippiUserDirectoryCandidates();
+  for (const dir of candidates) {
     if (fs.existsSync(path.join(dir, 'Config'))) return dir;
   }
-  for (const dir of slippiUserDirectoryCandidates()) {
+  for (const dir of candidates) {
     if (fs.existsSync(dir)) return dir;
   }
   return null;
