@@ -13,7 +13,13 @@ import { execFile, spawn } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { getDolphinUserDir } from './dolphin-config';
+import {
+  type DolphinVariant,
+  getDolphinUserDir,
+  getLauncherDir,
+  readLauncherSettings,
+  detectDolphinVariant,
+} from './dolphin-config';
 import { DOLPHIN_PROCESS_NAMES } from '../config';
 
 const find = require('find-process') as (
@@ -23,51 +29,8 @@ const find = require('find-process') as (
 ) => Promise<Array<{ name: string; pid: number }>>;
 
 // ---------------------------------------------------------------------------
-// Slippi Launcher Settings reader
+// Dolphin executable resolution
 // ---------------------------------------------------------------------------
-
-interface LauncherSettings {
-  netplayPromotedToStable?: boolean;
-  settings?: {
-    useNetplayBeta?: boolean;
-    isoPath?: string | null;
-  };
-}
-
-function getLauncherDir(): string {
-  const home = os.homedir();
-  return process.platform === 'win32'
-    ? path.join(home, 'AppData', 'Roaming', 'Slippi Launcher')
-    : process.platform === 'darwin'
-      ? path.join(home, 'Library', 'Application Support', 'Slippi Launcher')
-      : path.join(home, '.config', 'Slippi Launcher');
-}
-
-function readLauncherSettings(): LauncherSettings | null {
-  try {
-    const settingsPath = path.join(getLauncherDir(), 'Settings');
-    if (!fs.existsSync(settingsPath)) return null;
-    return JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-  } catch { return null; }
-}
-
-type DolphinVariant = 'mainline' | 'ishiiruka';
-
-/**
- * Mirrors the Slippi Launcher's DolphinManager.getInstallation() logic:
- *  - promotedToStable || useNetplayBeta → Mainline
- *  - otherwise → Ishiiruka
- */
-function detectDolphinVariant(settings: LauncherSettings | null): { variant: DolphinVariant; betaSuffix: string } {
-  const promotedToStable = settings?.netplayPromotedToStable ?? false;
-  const useNetplayBeta = settings?.settings?.useNetplayBeta ?? false;
-
-  if (promotedToStable || useNetplayBeta) {
-    const betaSuffix = promotedToStable ? '' : '-beta';
-    return { variant: 'mainline', betaSuffix };
-  }
-  return { variant: 'ishiiruka', betaSuffix: '' };
-}
 
 function scanDirForFile(dir: string, match: (name: string) => boolean): string | null {
   try {

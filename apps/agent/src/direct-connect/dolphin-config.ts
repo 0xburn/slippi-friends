@@ -1,9 +1,9 @@
 /**
  * Dolphin configuration helpers for direct connect.
  *
- * Resolves the real Dolphin User directory and the Slippi config directory.
- * Reads the Slippi Launcher's Settings file to determine Mainline vs
- * Ishiiruka, matching the Launcher's own resolution logic.
+ * Resolves the Slippi Launcher Settings, Dolphin User directory, and Slippi
+ * config directory. Reads the Launcher's Settings file to determine Mainline
+ * vs Ishiiruka, matching the Launcher's own resolution logic.
  * Injects a connect code into Slippi's direct-codes.json so it appears as
  * the first autocomplete suggestion on the in-game code entry screen.
  */
@@ -14,26 +14,55 @@ import * as path from 'path';
 import { getSlippiUserJsonPaths } from '../config';
 
 // ---------------------------------------------------------------------------
-// Dolphin User directory resolution
+// Slippi Launcher Settings — shared by dolphin-config and dolphin-launcher
 // ---------------------------------------------------------------------------
 
-function readLauncherSettings(): { promotedToStable: boolean; useBeta: boolean } {
-  try {
-    const home = os.homedir();
-    const launcherDir = process.platform === 'win32'
-      ? path.join(home, 'AppData', 'Roaming', 'Slippi Launcher')
-      : process.platform === 'darwin'
-        ? path.join(home, 'Library', 'Application Support', 'Slippi Launcher')
-        : path.join(home, '.config', 'Slippi Launcher');
-    const settingsPath = path.join(launcherDir, 'Settings');
-    if (!fs.existsSync(settingsPath)) return { promotedToStable: false, useBeta: false };
-    const data = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-    return {
-      promotedToStable: data?.netplayPromotedToStable ?? false,
-      useBeta: data?.settings?.useNetplayBeta ?? false,
-    };
-  } catch { return { promotedToStable: false, useBeta: false }; }
+export interface LauncherSettings {
+  netplayPromotedToStable?: boolean;
+  settings?: {
+    useNetplayBeta?: boolean;
+    isoPath?: string | null;
+  };
 }
+
+export type DolphinVariant = 'mainline' | 'ishiiruka';
+
+export function getLauncherDir(): string {
+  const home = os.homedir();
+  return process.platform === 'win32'
+    ? path.join(home, 'AppData', 'Roaming', 'Slippi Launcher')
+    : process.platform === 'darwin'
+      ? path.join(home, 'Library', 'Application Support', 'Slippi Launcher')
+      : path.join(home, '.config', 'Slippi Launcher');
+}
+
+export function readLauncherSettings(): LauncherSettings | null {
+  try {
+    const settingsPath = path.join(getLauncherDir(), 'Settings');
+    if (!fs.existsSync(settingsPath)) return null;
+    return JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+  } catch { return null; }
+}
+
+/**
+ * Mirrors the Slippi Launcher's DolphinManager.getInstallation() logic:
+ *  - promotedToStable || useNetplayBeta → Mainline
+ *  - otherwise → Ishiiruka
+ */
+export function detectDolphinVariant(settings: LauncherSettings | null): { variant: DolphinVariant; betaSuffix: string } {
+  const promotedToStable = settings?.netplayPromotedToStable ?? false;
+  const useNetplayBeta = settings?.settings?.useNetplayBeta ?? false;
+
+  if (promotedToStable || useNetplayBeta) {
+    const betaSuffix = promotedToStable ? '' : '-beta';
+    return { variant: 'mainline', betaSuffix };
+  }
+  return { variant: 'ishiiruka', betaSuffix: '' };
+}
+
+// ---------------------------------------------------------------------------
+// Dolphin User directory resolution
+// ---------------------------------------------------------------------------
 
 /**
  * Build user-directory candidates ordered by what the Launcher settings say.
@@ -50,15 +79,11 @@ function readLauncherSettings(): { promotedToStable: boolean; useBeta: boolean }
  */
 function slippiUserDirectoryCandidates(): string[] {
   const home = os.homedir();
-  const { promotedToStable, useBeta } = readLauncherSettings();
-  const isMainline = promotedToStable || useBeta;
-  const betaSuffix = (isMainline && !promotedToStable) ? '-beta' : '';
+  const settings = readLauncherSettings();
+  const { variant, betaSuffix } = detectDolphinVariant(settings);
+  const isMainline = variant === 'mainline';
 
-  const launcherDir = process.platform === 'win32'
-    ? path.join(home, 'AppData', 'Roaming', 'Slippi Launcher')
-    : process.platform === 'darwin'
-      ? path.join(home, 'Library', 'Application Support', 'Slippi Launcher')
-      : path.join(home, '.config', 'Slippi Launcher');
+  const launcherDir = getLauncherDir();
 
   if (process.platform === 'win32') {
     const primary = path.join(launcherDir, `netplay${betaSuffix}`, 'User');
