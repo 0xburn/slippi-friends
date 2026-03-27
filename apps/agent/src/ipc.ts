@@ -780,6 +780,9 @@ export function registerIpcHandlers(
           distance += distance * 0.08 * (Math.random() - 0.5);
 
           const resolved = resolvePresenceRow(r as any, PRESENCE_STALE_THRESHOLD, Date.now());
+
+          // Boost active players: LFG / status preset users appear ~60% closer
+          if (resolved.statusPreset || resolved.lookingToPlay) distance *= 0.4;
           return {
             userId: p.id,
             connectCode: p.connect_code,
@@ -806,6 +809,9 @@ export function registerIpcHandlers(
         const hasHistoryA = a.lastPlayedAt ? 1 : 0;
         const hasHistoryB = b.lastPlayedAt ? 1 : 0;
         if (hasHistoryA !== hasHistoryB) return hasHistoryB - hasHistoryA;
+        const statusA = (a.statusPreset || a.lookingToPlay) ? 1 : 0;
+        const statusB = (b.statusPreset || b.lookingToPlay) ? 1 : 0;
+        if (statusA !== statusB) return statusB - statusA;
         return a.distance - b.distance;
       });
 
