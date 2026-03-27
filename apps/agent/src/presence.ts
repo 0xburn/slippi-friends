@@ -1,6 +1,7 @@
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 import { execFile } from 'child_process';
+import * as os from 'os';
 
 import {
   DOLPHIN_PROCESS_NAMES,
@@ -21,6 +22,75 @@ import { supabase } from './supabase';
 
 export type { PresenceStatus };
 
+export type ConnectionType = 'wifi' | 'ethernet' | null;
+
+let macDeviceTypeMap: Map<string, 'wifi' | 'ethernet'> | null = null;
+
+function buildMacDeviceMap(): Promise<Map<string, 'wifi' | 'ethernet'>> {
+  return new Promise((resolve) => {
+    execFile('networksetup', ['-listallhardwareports'], { timeout: 5000 }, (err, stdout) => {
+      const map = new Map<string, 'wifi' | 'ethernet'>();
+      if (err || !stdout) { resolve(map); return; }
+      const blocks = stdout.split(/\n\n/);
+      for (const block of blocks) {
+        const portMatch = block.match(/Hardware Port:\s*(.+)/i);
+        const devMatch = block.match(/Device:\s*(\S+)/i);
+        if (!portMatch || !devMatch) continue;
+        const port = portMatch[1].toLowerCase();
+        const dev = devMatch[1];
+        if (port.includes('wi-fi') || port.includes('wifi') || port.includes('airport')) {
+          map.set(dev, 'wifi');
+        } else if (port.includes('ethernet') || port.includes('thunderbolt ethernet') || port.includes('usb 10/100/1000')) {
+          map.set(dev, 'ethernet');
+        }
+      }
+      resolve(map);
+    });
+  });
+}
+
+export function detectConnectionType(): ConnectionType {
+  const ifaces = os.networkInterfaces();
+  const activeIfaces: { name: string; family: string }[] = [];
+
+  for (const [name, addrs] of Object.entries(ifaces)) {
+    if (!addrs) continue;
+    for (const addr of addrs) {
+      if (!addr.internal && addr.family === 'IPv4') {
+        activeIfaces.push({ name, family: addr.family });
+      }
+    }
+  }
+
+  if (activeIfaces.length === 0) return null;
+
+  if (process.platform === 'win32') {
+    const lower = activeIfaces.map((i) => i.name.toLowerCase());
+    if (lower.some((n) => n.includes('wi-fi') || n.includes('wifi') || n.includes('wireless') || n.includes('wlan'))) return 'wifi';
+    if (lower.some((n) => n.includes('ethernet') || n.includes('local area'))) return 'ethernet';
+    return null;
+  }
+
+  if (process.platform === 'darwin' && macDeviceTypeMap) {
+    for (const iface of activeIfaces) {
+      const type = macDeviceTypeMap.get(iface.name);
+      if (type) return type;
+    }
+    return null;
+  }
+
+  // Linux fallback
+  for (const iface of activeIfaces) {
+    if (iface.name.startsWith('wl')) return 'wifi';
+    if (iface.name.startsWith('eth') || iface.name.startsWith('en')) return 'ethernet';
+  }
+  return null;
+}
+
+export function getConnectionType(): ConnectionType {
+  return hideConnectionType ? null : currentConnectionType;
+}
+
 export interface OnlineUser {
   connectCode: string;
   displayName: string;
@@ -28,6 +98,7 @@ export interface OnlineUser {
   currentCharacter: number | null;
   opponentCode: string | null;
   playingSince: string | null;
+  connectionType: ConnectionType;
   updatedAt: string;
 }
 
@@ -69,6 +140,9 @@ let lastPushedCharacter: number | null = null;
 let lastPushedOpponentCode: string | null = null;
 let lastDbWriteTime = 0;
 const DB_HEARTBEAT_INTERVAL = 150_000;
+
+let currentConnectionType: ConnectionType = null;
+let hideConnectionType = false;
 let lastStaleCleanup = 0;
 const STALE_CLEANUP_INTERVAL = 5 * 60 * 1000;
 
@@ -103,6 +177,10 @@ export function getLastPlayedCharacterId(): number | null {
 
 export function setGameThrottling(enabled: boolean): void {
   throttleInGame = enabled;
+}
+
+export function setHideConnectionType(hidden: boolean): void {
+  hideConnectionType = hidden;
 }
 
 export function onGameActiveChange(cb: GameActiveCallback): () => void {
@@ -234,6 +312,7 @@ function extractOnlineUsers(): OnlineUser[] {
           currentCharacter: e.currentCharacter ?? null,
           opponentCode: e.opponentCode ?? null,
           playingSince: e.playingSince ?? null,
+          connectionType: e.connectionType ?? null,
           updatedAt: e.updatedAt || '',
         });
       }
@@ -299,6 +378,7 @@ async function pushPresence(
         looking_to_play: lfgActive,
         looking_to_play_since: lfgActive ? lookingToPlaySince : null,
         status_preset: lfgActive ? statusPreset : null,
+        connection_type: hideConnectionType ? null : currentConnectionType,
         updated_at: new Date().toISOString(),
       };
 
@@ -357,6 +437,7 @@ async function pushPresence(
       currentCharacter: character,
       opponentCode: opCode,
       playingSince: opponent?.since ?? null,
+      connectionType: hideConnectionType ? null : currentConnectionType,
       updatedAt: new Date().toISOString(),
     };
 
@@ -503,6 +584,12 @@ export async function startPresenceLoop(
     loopUserId = userId;
     console.log('[presence] startPresenceLoop — subscribing channel...');
 
+    if (process.platform === 'darwin' && !macDeviceTypeMap) {
+      macDeviceTypeMap = await buildMacDeviceMap();
+    }
+    currentConnectionType = detectConnectionType();
+    console.log('[presence] connection type:', currentConnectionType);
+
     const channelOk = await subscribeChannel(connectCode);
     console.log('[presence] startPresenceLoop — channelOk:', channelOk);
     if (!channelOk) scheduleChannelRetry();
@@ -531,6 +618,8 @@ export async function startPresenceLoop(
               else console.log('[presence] stale cleanup ran');
             });
         }
+
+        currentConnectionType = detectConnectionType();
 
         const t0 = performance.now();
         const snapshot = await getProcessSnapshot();

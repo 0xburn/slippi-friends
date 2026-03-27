@@ -16,6 +16,7 @@ interface DiscoverPlayer {
   currentCharacter: number | null;
   opponentCode: string | null;
   playingSince: string | null;
+  connectionType: 'wifi' | 'ethernet' | null;
   lastPlayedAt: string | null;
   lookingToPlay?: boolean;
   statusPreset?: string | null;
@@ -147,9 +148,12 @@ function CharacterFilter({ selected, onToggle, onClear }: {
   );
 }
 
+const CONN_TYPE_USERS = new Set(['SMOK#1', 'BF#0']);
+
 export function Discover() {
   const [players, setPlayers] = useState<DiscoverPlayer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [myCode, setMyCode] = useState<string | null>(null);
   const [adding, setAdding] = useState<string | null>(null);
   const [addedMap, setAddedMap] = useState<Map<string, 'pending' | 'friends'>>(new Map());
   const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
@@ -173,6 +177,7 @@ export function Discover() {
 
   useEffect(() => {
     load();
+    window.api.getIdentity().then((id) => { if (id) setMyCode(id.connectCode); });
     const interval = setInterval(() => { if (!document.hidden) load(); }, 30_000);
     const onVisible = () => { if (!document.hidden) load(); };
     document.addEventListener('visibilitychange', onVisible);
@@ -292,6 +297,7 @@ export function Discover() {
                   currentCharacter: p.currentCharacter,
                   opponentCode: p.opponentCode,
                   playingSince: p.playingSince,
+                  connectionType: myCode && CONN_TYPE_USERS.has(myCode) ? p.connectionType : undefined,
                   lookingToPlay: p.lookingToPlay,
                   statusPreset: p.statusPreset,
                 }}

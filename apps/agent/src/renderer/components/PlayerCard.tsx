@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ConnectionTypeIcon } from './ConnectionTypeIcon';
 import { OnlineIndicator } from './OnlineIndicator';
 import { RankBadge } from './RankBadge';
 import { CharacterIcon } from './CharacterIcon';
@@ -29,6 +30,7 @@ interface PlayerCardProps {
     playingSince?: string | null;
     lookingToPlay?: boolean;
     statusPreset?: string | null;
+    connectionType?: 'wifi' | 'ethernet' | null;
   };
   showStatus?: boolean;
   expandable?: boolean;
@@ -118,6 +120,9 @@ export function PlayerCard({ player, showStatus = true, expandable = true, onCli
                 <DiscordIcon className="w-3.5 h-3.5 text-[#5865F2] shrink-0" />
                 <span className="text-xs font-medium text-[#5865F2] truncate">@{player.discordUsername}</span>
               </button>
+            )}
+            {player.connectionType && (
+              <ConnectionTypeIcon type={player.connectionType} />
             )}
             {player.region && (
               <span className="text-[10px] text-gray-600 truncate">{player.region}</span>

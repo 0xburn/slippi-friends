@@ -5,7 +5,7 @@ import { PRESENCE_STALE_THRESHOLD } from './config';
 import { getDirectConnectService } from './direct-connect';
 import { getIdentity, verifyIdentity } from './identity';
 import { resolvePresenceRow } from './presence-logic';
-import { getCurrentStatus, getOnlineUsers, getPresenceStats, getStatusPreset, isLookingToPlay, onLocalStatusChange, onPresenceSync, setStatusPreset, toggleLookingToPlay } from './presence';
+import { getConnectionType, getCurrentStatus, getOnlineUsers, getPresenceStats, getStatusPreset, isLookingToPlay, onLocalStatusChange, onPresenceSync, setHideConnectionType, setStatusPreset, toggleLookingToPlay } from './presence';
 import { showTestNotification } from './notifications';
 import { getSettings, isSetupComplete, updateSettings, type AgentSettings } from './settings';
 import { supabase } from './supabase';
@@ -638,6 +638,7 @@ export function registerIpcHandlers(
 
   ipcMain.handle('presence:online', () => getOnlineUsers());
   ipcMain.handle('presence:localStatus', () => getCurrentStatus());
+  ipcMain.handle('presence:connectionType', () => getConnectionType());
   ipcMain.handle('stats:presence', () => getPresenceStats());
   ipcMain.handle('presence:toggleLookingToPlay', () => toggleLookingToPlay());
   ipcMain.handle('presence:isLookingToPlay', () => isLookingToPlay());
@@ -659,7 +660,7 @@ export function registerIpcHandlers(
       if (friendIds.length === 0) return {};
 
       const { data } = await supabase.from('presence_log')
-        .select('user_id, status, current_character, opponent_code, playing_since, looking_to_play, looking_to_play_since, status_preset, updated_at')
+        .select('user_id, status, current_character, opponent_code, playing_since, looking_to_play, looking_to_play_since, status_preset, connection_type, updated_at')
         .in('user_id', friendIds);
       if (!data) return {};
 
@@ -704,7 +705,7 @@ export function registerIpcHandlers(
       const cutoff = new Date(Date.now() - PRESENCE_STALE_THRESHOLD).toISOString();
       const { data: presenceRows } = await supabase
         .from('presence_log')
-        .select('user_id, status, current_character, opponent_code, playing_since, looking_to_play, looking_to_play_since, status_preset, updated_at')
+        .select('user_id, status, current_character, opponent_code, playing_since, looking_to_play, looking_to_play_since, status_preset, connection_type, updated_at')
         .in('status', ['online', 'in-game'])
         .gte('updated_at', cutoff);
       if (!presenceRows || presenceRows.length === 0) return [];
@@ -716,7 +717,7 @@ export function registerIpcHandlers(
 
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, connect_code, display_name, avatar_url, latitude, longitude, top_characters, region, hide_region, hide_discord_unless_friends, hide_avatar, discord_username, discord_id')
+        .select('id, connect_code, display_name, avatar_url, latitude, longitude, top_characters, region, hide_region, hide_discord_unless_friends, hide_avatar, hide_connection_type, discord_username, discord_id')
         .in('id', candidateIds);
       if (!profiles) return [];
 
@@ -797,6 +798,7 @@ export function registerIpcHandlers(
             currentCharacter: r.current_character,
             opponentCode: r.opponent_code,
             playingSince: r.playing_since,
+            connectionType: p.hide_connection_type ? null : resolved.connectionType,
             updatedAt: r.updated_at,
             lastPlayedAt: matchHistoryMap[p.connect_code] || null,
             lookingToPlay: resolved.lookingToPlay,
@@ -984,17 +986,20 @@ export function registerIpcHandlers(
   ipcMain.handle('privacy:get', async () => {
     try {
       const user = await getCurrentUser();
-      if (!user) return { hideRegion: false, hideDiscordUnlessFriends: false, hideAvatar: false };
-      const { data } = await supabase.from('profiles').select('hide_region, hide_discord_unless_friends, hide_avatar').eq('id', user.id).single();
+      if (!user) return { hideRegion: false, hideDiscordUnlessFriends: false, hideAvatar: false, hideConnectionType: false };
+      const { data } = await supabase.from('profiles').select('hide_region, hide_discord_unless_friends, hide_avatar, hide_connection_type').eq('id', user.id).single();
+      const hideConn = data?.hide_connection_type ?? false;
+      setHideConnectionType(hideConn);
       return {
         hideRegion: data?.hide_region ?? false,
         hideDiscordUnlessFriends: data?.hide_discord_unless_friends ?? false,
         hideAvatar: data?.hide_avatar ?? false,
+        hideConnectionType: hideConn,
       };
-    } catch { return { hideRegion: false, hideDiscordUnlessFriends: false, hideAvatar: false }; }
+    } catch { return { hideRegion: false, hideDiscordUnlessFriends: false, hideAvatar: false, hideConnectionType: false }; }
   });
 
-  ipcMain.handle('privacy:update', async (_e, partial: { hideRegion?: boolean; hideDiscordUnlessFriends?: boolean; hideAvatar?: boolean }) => {
+  ipcMain.handle('privacy:update', async (_e, partial: { hideRegion?: boolean; hideDiscordUnlessFriends?: boolean; hideAvatar?: boolean; hideConnectionType?: boolean }) => {
     try {
       const user = await getCurrentUser();
       if (!user) return { error: 'Not authenticated' };
@@ -1002,6 +1007,10 @@ export function registerIpcHandlers(
       if (partial.hideRegion !== undefined) update.hide_region = partial.hideRegion;
       if (partial.hideDiscordUnlessFriends !== undefined) update.hide_discord_unless_friends = partial.hideDiscordUnlessFriends;
       if (partial.hideAvatar !== undefined) update.hide_avatar = partial.hideAvatar;
+      if (partial.hideConnectionType !== undefined) {
+        update.hide_connection_type = partial.hideConnectionType;
+        setHideConnectionType(partial.hideConnectionType);
+      }
       const { error } = await supabase.from('profiles').update(update).eq('id', user.id);
       if (error) return { error: error.message };
       return { ok: true };

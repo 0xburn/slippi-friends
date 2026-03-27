@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { ConnectionTypeIcon } from '../components/ConnectionTypeIcon';
 import { OnlineIndicator } from '../components/OnlineIndicator';
 import { PlayerCard } from '../components/PlayerCard';
 import { RankBadge } from '../components/RankBadge';
@@ -44,10 +45,12 @@ function SkeletonCard() {
   );
 }
 
+const CONN_TYPE_USERS = new Set(['SMOK#1', 'BF#0']);
+
 export function Friends() {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [incoming, setIncoming] = useState<IncomingRequest[]>([]);
-  const [onlineMap, setOnlineMap] = useState<Record<string, { status: string; opponentCode?: string; currentCharacter?: number | null; playingSince?: string; lookingToPlay?: boolean; statusPreset?: string | null }>>({});
+  const [onlineMap, setOnlineMap] = useState<Record<string, { status: string; opponentCode?: string; currentCharacter?: number | null; playingSince?: string; lookingToPlay?: boolean; statusPreset?: string | null; connectionType?: 'wifi' | 'ethernet' | null }>>({});
   const [search, setSearch] = useState('');
   const [addCode, setAddCode] = useState('');
   const [addError, setAddError] = useState('');
@@ -79,6 +82,8 @@ export function Friends() {
   const [myPlayingSince, setMyPlayingSince] = useState<string | null>(null);
   const [hideRegion, setHideRegion] = useState(false);
   const [hideAvatar, setHideAvatar] = useState<boolean | null>(null);
+  const [hideConnectionType, setHideConnectionType] = useState(false);
+  const [myConnectionType, setMyConnectionType] = useState<'wifi' | 'ethernet' | null>(null);
   const [myMainCharId, setMyMainCharId] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
   const [myStatusPreset, setMyStatusPreset] = useState<string | null>(null);
@@ -121,7 +126,9 @@ export function Friends() {
     window.api.getPrivacy().then((p) => {
       setHideRegion(p.hideRegion);
       setHideAvatar(p.hideAvatar);
+      setHideConnectionType(p.hideConnectionType);
     }).catch(() => {});
+    window.api.getConnectionType().then(setMyConnectionType).catch(() => {});
 
     Promise.all([loadFriends(), loadIncoming(), pollFriendStatuses(), loadPlayInvites(), loadSentInvites()]).finally(() =>
       setInitialLoading(false),
@@ -138,6 +145,7 @@ export function Friends() {
             playingSince: u.playingSince ?? undefined,
             lookingToPlay: prev[u.connectCode]?.lookingToPlay,
             statusPreset: prev[u.connectCode]?.statusPreset,
+            connectionType: u.connectionType ?? prev[u.connectCode]?.connectionType ?? null,
           };
         });
         return next;
@@ -172,6 +180,7 @@ export function Friends() {
       loadIncoming();
       loadPlayInvites();
       loadSentInvites();
+      window.api.getConnectionType().then(setMyConnectionType).catch(() => {});
     }, 30_000);
     const onVisible = () => {
       if (!document.hidden) {
@@ -180,6 +189,12 @@ export function Friends() {
         loadIncoming();
         loadPlayInvites();
         loadSentInvites();
+        window.api.getConnectionType().then(setMyConnectionType).catch(() => {});
+        window.api.getPrivacy().then((p) => {
+          setHideRegion(p.hideRegion);
+          setHideAvatar(p.hideAvatar);
+          setHideConnectionType(p.hideConnectionType);
+        }).catch(() => {});
       }
     };
     document.addEventListener('visibilitychange', onVisible);
@@ -190,7 +205,7 @@ export function Friends() {
     try {
       const statuses = await window.api.getFriendStatuses();
       if (statuses && typeof statuses === 'object') {
-        const mapped: Record<string, { status: string; opponentCode?: string; currentCharacter?: number | null; playingSince?: string; lookingToPlay?: boolean; statusPreset?: string | null }> = {};
+        const mapped: Record<string, { status: string; opponentCode?: string; currentCharacter?: number | null; playingSince?: string; lookingToPlay?: boolean; statusPreset?: string | null; connectionType?: 'wifi' | 'ethernet' | null }> = {};
         for (const [code, val] of Object.entries(statuses as Record<string, any>)) {
           mapped[code] = {
             status: val.status,
@@ -199,6 +214,7 @@ export function Friends() {
             playingSince: val.playingSince ?? undefined,
             lookingToPlay: val.lookingToPlay ?? false,
             statusPreset: val.statusPreset ?? null,
+            connectionType: val.connectionType ?? null,
           };
         }
         setOnlineMap((prev) => ({ ...prev, ...mapped }));
@@ -259,6 +275,7 @@ export function Friends() {
         playingSince: presence?.playingSince ?? null,
         lookingToPlay: presence?.lookingToPlay ?? false,
         statusPreset: presence?.statusPreset ?? null,
+        connectionType: presence?.connectionType ?? null,
       };
     });
   }, [friends, onlineMap]);
@@ -512,6 +529,9 @@ export function Friends() {
               <div className="flex items-center gap-2 mt-0.5">
                 {myIdentity.displayName && (
                   <span className="text-xs text-gray-500">{myIdentity.displayName}</span>
+                )}
+                {myConnectionType && !hideConnectionType && myIdentity && CONN_TYPE_USERS.has(myIdentity.connectCode) && (
+                  <ConnectionTypeIcon type={myConnectionType} />
                 )}
                 {myProfile?.region && !hideRegion && (
                   <span className="text-[10px] text-gray-600">{myProfile.region}</span>
@@ -926,6 +946,7 @@ export function Friends() {
                 playingSince: f.playingSince,
                 lookingToPlay: f.lookingToPlay,
                 statusPreset: disableStatuses ? undefined : (f.statusPreset ?? undefined),
+                connectionType: myIdentity && CONN_TYPE_USERS.has(myIdentity.connectCode) ? f.connectionType : undefined,
               }}
               onClick={() => handleCopy(f.connectCode)}
               onBlock={() => setConfirmBlock({ code: f.connectCode })}

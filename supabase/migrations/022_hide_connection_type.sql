@@ -1,0 +1,1 @@
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS hide_connection_type BOOLEAN DEFAULT FALSE;

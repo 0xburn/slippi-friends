@@ -50,7 +50,7 @@ export function Settings() {
     disableStatuses: false,
   });
   const [metrics, setMetrics] = useState<AppMetric[] | null>(null);
-  const [privacy, setPrivacy] = useState({ hideRegion: false, hideDiscordUnlessFriends: false, hideAvatar: false });
+  const [privacy, setPrivacy] = useState({ hideRegion: false, hideDiscordUnlessFriends: false, hideAvatar: false, hideConnectionType: false });
   const [saved, setSaved] = useState(false);
   const [updateMsg, setUpdateMsg] = useState<string | null>(null);
   const [blockedUsers, setBlockedUsers] = useState<{ connectCode: string; displayName: string | null; avatarUrl: string | null; blockedAt: string }[]>([]);
@@ -292,6 +292,15 @@ export function Settings() {
           onChange={() => togglePrivacy('hideAvatar')}
           indent
         />
+        {myCode && DEBUG_CONNECT_CODES.includes(myCode) && (
+          <ToggleRow
+            label="Hide Connection Type"
+            description="Don't show whether you're on Wi-Fi or Ethernet"
+            checked={privacy.hideConnectionType}
+            onChange={() => togglePrivacy('hideConnectionType')}
+            indent
+          />
+        )}
       </div>
 
       <div className="rounded-2xl border border-[#2a2a2a] bg-[#141414] divide-y divide-[#2a2a2a]">
@@ -450,7 +459,7 @@ export function Settings() {
       })()}
 
       <p className="text-center text-xs text-gray-600">
-      friendlies v0.1.95
+      friendlies v0.1.96
       </p>
     </div>
   );
