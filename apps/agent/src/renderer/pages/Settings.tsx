@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface SettingsState {
   replayDir: string;
@@ -404,6 +404,10 @@ export function Settings() {
         </div>
       )}
 
+      {myCode && DEBUG_CONNECT_CODES.includes(myCode) && (
+        <DebugLaunchPanel />
+      )}
+
       {metrics && myCode && DEBUG_CONNECT_CODES.includes(myCode) && (() => {
         const labelMap: Record<string, string> = {
           Browser: 'Main process',
@@ -446,8 +450,94 @@ export function Settings() {
       })()}
 
       <p className="text-center text-xs text-gray-600">
-      friendlies v0.1.92
+      friendlies v0.1.93
       </p>
+    </div>
+  );
+}
+
+function DebugLaunchPanel() {
+  const [status, setStatus] = useState<string | null>(null);
+  const [active, setActive] = useState(false);
+  const [log, setLog] = useState<string[]>([]);
+  const logRef = useRef<HTMLPreElement>(null);
+
+  useEffect(() => {
+    window.api.getDirectConnectStatus().then((s) => {
+      setActive(s.active);
+      if (s.active) setStatus(s.status);
+    });
+    const unsub = window.api.onDirectConnectStatus((evt: any) => {
+      const msg = evt.error ? `${evt.status}: ${evt.error}` : evt.status;
+      setStatus(msg);
+      setActive(evt.status !== 'stopped' && evt.status !== 'error');
+      setLog((prev) => [...prev.slice(-50), `${new Date().toLocaleTimeString()} ${msg}`]);
+    });
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
+  }, [log]);
+
+  async function handleLaunch() {
+    setLog([]);
+    setStatus('starting...');
+    setActive(true);
+    const result = await window.api.startDirectConnect('MANG#0');
+    if (result?.error) {
+      setStatus(`error: ${result.error}`);
+      setActive(false);
+      setLog((prev) => [...prev, `${new Date().toLocaleTimeString()} error: ${result.error}`]);
+    }
+  }
+
+  async function handleStop() {
+    await window.api.stopDirectConnect();
+    setActive(false);
+    setStatus('stopped');
+  }
+
+  return (
+    <div className="rounded-2xl border border-yellow-500/30 bg-[#141414] p-5">
+      <h3 className="text-xs font-semibold text-yellow-400 uppercase tracking-wider mb-3">Launch Dolphin (debug)</h3>
+      <p className="text-xs text-gray-500 mb-3">
+        Launches Dolphin and injects <span className="font-mono text-gray-400">MANG#0</span> as the direct connect code.
+      </p>
+      <div className="flex items-center gap-3 mb-3">
+        <button
+          onClick={handleLaunch}
+          disabled={active}
+          className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-2 text-sm font-medium text-yellow-400 transition-colors hover:bg-yellow-500/20 disabled:opacity-40"
+        >
+          {active ? 'Running...' : 'Launch'}
+        </button>
+        {active && (
+          <button
+            onClick={handleStop}
+            className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] px-4 py-2 text-sm font-medium text-gray-400 transition-colors hover:bg-[#222] hover:text-white"
+          >
+            Stop
+          </button>
+        )}
+        {status && (
+          <span className={`text-xs font-medium ${
+            status.startsWith('error') ? 'text-red-400' :
+            status === 'stopped' ? 'text-gray-500' :
+            'text-yellow-400'
+          }`}>
+            {status}
+          </span>
+        )}
+      </div>
+      {log.length > 0 && (
+        <pre
+          ref={logRef}
+          className="mt-2 max-h-32 overflow-y-auto rounded-lg bg-[#0a0a0a] border border-[#2a2a2a] p-3 text-[10px] text-gray-500 font-mono leading-relaxed"
+        >
+          {log.join('\n')}
+        </pre>
+      )}
     </div>
   );
 }
