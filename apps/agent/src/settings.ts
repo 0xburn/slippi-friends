@@ -14,6 +14,7 @@ export type AgentSettings = {
   notificationSound: boolean;
   setupComplete: boolean;
   reduceBackgroundActivity: boolean;
+  notificationVolume: number;
   disableNudges: boolean;
   disableStatuses: boolean;
 };
@@ -36,11 +37,12 @@ export function getSettings(): AgentSettings {
       notificationSound: store.get('notificationSound') !== false,
       setupComplete: isSetupComplete(),
       reduceBackgroundActivity: store.get('reduceBackgroundActivity') !== false,
+      notificationVolume: typeof store.get('notificationVolume') === 'number' ? store.get('notificationVolume') as number : 0.35,
       disableNudges: Boolean(store.get('disableNudges')),
       disableStatuses: Boolean(store.get('disableStatuses')),
     };
   } catch {
-    return { replayDir: getDefaultReplayDir(), autoLaunch: false, closeToTray: false, showNotifications: true, notifyFriendOnline: true, notifyPlayInvite: true, notificationSound: true, setupComplete: false, reduceBackgroundActivity: true, disableNudges: false, disableStatuses: false };
+    return { replayDir: getDefaultReplayDir(), autoLaunch: false, closeToTray: false, showNotifications: true, notifyFriendOnline: true, notifyPlayInvite: true, notificationSound: true, setupComplete: false, reduceBackgroundActivity: true, notificationVolume: 0.35, disableNudges: false, disableStatuses: false };
   }
 }
 
@@ -60,6 +62,7 @@ export function updateSettings(partial: Partial<AgentSettings>): AgentSettings {
     if (partial.notificationSound !== undefined) store.set('notificationSound', next.notificationSound);
     if (partial.setupComplete !== undefined) store.set('setupComplete', next.setupComplete);
     if (partial.reduceBackgroundActivity !== undefined) store.set('reduceBackgroundActivity', next.reduceBackgroundActivity);
+    if (partial.notificationVolume !== undefined) store.set('notificationVolume', next.notificationVolume);
     if (partial.disableNudges !== undefined) store.set('disableNudges', next.disableNudges);
     if (partial.disableStatuses !== undefined) store.set('disableStatuses', next.disableStatuses);
     return next;

@@ -8,6 +8,7 @@ interface SettingsState {
   notifyFriendOnline: boolean;
   notifyPlayInvite: boolean;
   notificationSound: boolean;
+  notificationVolume: number;
   reduceBackgroundActivity: boolean;
   disableNudges: boolean;
   disableStatuses: boolean;
@@ -43,6 +44,7 @@ export function Settings() {
     notifyFriendOnline: true,
     notifyPlayInvite: true,
     notificationSound: true,
+    notificationVolume: 0.35,
     reduceBackgroundActivity: true,
     disableNudges: false,
     disableStatuses: false,
@@ -64,6 +66,7 @@ export function Settings() {
         notifyFriendOnline: s.notifyFriendOnline !== false,
         notifyPlayInvite: s.notifyPlayInvite !== false,
         notificationSound: s.notificationSound !== false,
+        notificationVolume: typeof s.notificationVolume === 'number' ? s.notificationVolume : 0.35,
         reduceBackgroundActivity: s.reduceBackgroundActivity !== false,
         disableNudges: !!s.disableNudges,
         disableStatuses: !!s.disableStatuses,
@@ -215,6 +218,29 @@ export function Settings() {
           disabled={!notifsEnabled}
           indent
         />
+
+        <div className={`flex items-center justify-between p-5 pl-10 ${!notifsEnabled || !settings.notificationSound ? 'opacity-40 pointer-events-none' : ''}`}>
+          <div>
+            <p className="text-sm font-medium text-gray-300">Volume</p>
+            <p className="text-xs text-gray-500 mt-0.5">Adjust notification sound volume</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <input
+              type="range"
+              min={0}
+              max={0.35}
+              step={0.01}
+              value={settings.notificationVolume}
+              onChange={(e) => {
+                const vol = parseFloat(e.target.value);
+                setSettings((s) => ({ ...s, notificationVolume: vol }));
+                window.api.updateSettings({ notificationVolume: vol });
+              }}
+              className="w-28 accent-[#21BA45] h-1.5 bg-[#333] rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-md"
+            />
+            <span className="text-xs text-gray-500 w-8 text-right tabular-nums">{Math.round((settings.notificationVolume / 0.35) * 100)}%</span>
+          </div>
+        </div>
 
         <div className={`flex items-center justify-between p-5 pl-10 ${!notifsEnabled ? 'opacity-40 pointer-events-none' : ''}`}>
           <div>
@@ -420,7 +446,7 @@ export function Settings() {
       })()}
 
       <p className="text-center text-xs text-gray-600">
-      friendlies v0.1.90
+      friendlies v0.1.91
       </p>
     </div>
   );
