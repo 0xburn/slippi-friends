@@ -639,7 +639,7 @@ export function Friends() {
               <span className="text-[10px] text-gray-500 uppercase tracking-wider">Main</span>
               <button
                 onClick={() => { setMainPickerOpen(!mainPickerOpen); setSecondaryPickerOpen(false); }}
-                className="flex items-center gap-2 mt-1 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] px-0.5 py-1.5 hover:border-[#3a3a3a] transition-colors"
+                className="flex items-center gap-2 mt-1 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] px-[1px] py-1.5 hover:border-[#3a3a3a] transition-colors"
               >
                 {myChosenMain != null ? (
                   <>
