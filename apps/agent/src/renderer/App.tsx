@@ -7,6 +7,7 @@ import { GGs } from './pages/GGs';
 import { Opponents } from './pages/Opponents';
 import { Settings } from './pages/Settings';
 import { Discover } from './pages/Discover';
+import { Leaderboard } from './pages/Leaderboard';
 import { UpdateBanner } from './components/UpdateBanner';
 
 type BootState =
@@ -440,6 +441,7 @@ export function App() {
           <Route path="/discover" element={<Discover />} />
           <Route path="/ggs" element={<GGs />} />
           <Route path="/opponents" element={<Opponents />} />
+          <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

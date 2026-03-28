@@ -32,7 +32,6 @@ export function showFriendOnlineNotification(
       });
       n.show();
     }
-    playNotificationSound();
   } catch (e) {
     console.error('showFriendOnlineNotification failed', e);
   }

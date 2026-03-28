@@ -48,8 +48,16 @@ let watcher: ReturnType<typeof chokidar.watch> | null = null;
 
 let onIdentityMismatch: ((info: IdentityMismatch) => void) | null = null;
 
+const MISMATCH_STRIKE_THRESHOLD = 3;
+let consecutiveMismatches = 0;
+
 export function setIdentityMismatchHandler(handler: (info: IdentityMismatch) => void): void {
   onIdentityMismatch = handler;
+}
+
+function isSpectateReplay(filePath: string): boolean {
+  const parts = filePath.replace(/\\/g, '/').split('/');
+  return parts.some((p) => /^spectate$/i.test(p));
 }
 
 export async function processNewReplay(
@@ -80,6 +88,7 @@ export async function processNewReplay(
     );
 
     if (localPlayer) {
+      consecutiveMismatches = 0;
       console.log(`[watcher] Matched local player at port ${localPlayer.port} (code ${localNorm}, char ${localPlayer.characterId})`);
     } else {
       console.log(`[watcher] Local player not found for ${localNorm} — players: ${playersWithCodes.map((p) => normalizeConnectCode(p.connectCode || '')).join(', ')}`);
@@ -90,55 +99,67 @@ export async function processNewReplay(
     // This avoids false positives from downloaded/moved replay files.
     const recentEnough = isLive && isReplayFilenameRecent(filePath, 5 * 60 * 1000);
     if (recentEnough && !localPlayer && humans.length >= 2) {
-      const actualCodes = humans
-        .map((p) => normalizeConnectCode(p.connectCode || ''))
-        .filter(Boolean);
-      const localAlpha = localNorm.replace(/[^A-Z0-9]/g, '');
-      const isEncodingMismatch = actualCodes.some(
-        (c) => c.replace(/[^A-Z0-9]/g, '') === localAlpha,
-      );
-      // Re-read user.json fresh in case the user switched Slippi accounts mid-session.
-      // If the fresh identity matches a code in the replay, it's not a spoof.
-      const freshIdentity = getIdentity();
-      const freshNorm = freshIdentity ? normalizeConnectCode(freshIdentity.connectCode) : '';
-      const freshMatchesReplay = freshNorm && actualCodes.includes(freshNorm);
+      if (isSpectateReplay(filePath)) {
+        console.log(`[identity] Skipping mismatch check — spectate replay: ${path.basename(filePath)}`);
+      } else {
+        const actualCodes = humans
+          .map((p) => normalizeConnectCode(p.connectCode || ''))
+          .filter(Boolean);
+        const localAlpha = localNorm.replace(/[^A-Z0-9]/g, '');
+        const isEncodingMismatch = actualCodes.some(
+          (c) => c.replace(/[^A-Z0-9]/g, '') === localAlpha,
+        );
+        // Re-read user.json fresh in case the user switched Slippi accounts mid-session.
+        // If the fresh identity matches a code in the replay, it's not a spoof.
+        const freshIdentity = getIdentity();
+        const freshNorm = freshIdentity ? normalizeConnectCode(freshIdentity.connectCode) : '';
+        const freshMatchesReplay = freshNorm && actualCodes.includes(freshNorm);
 
-      if (isEncodingMismatch) {
-        console.log(`[identity] Encoding-only mismatch for ${localNorm} — not a spoof`);
-      } else if (freshMatchesReplay) {
-        console.log(`[identity] user.json updated to ${freshNorm} which matches replay — account switch, not a spoof`);
-      } else if (actualCodes.length > 0) {
-        const replayName = path.basename(filePath);
-        const mismatch: IdentityMismatch = {
-          claimedCode: localNorm,
-          actualCode: actualCodes[0],
-          replayFile: replayName,
-        };
-        console.warn('[identity] MISMATCH DETECTED:', mismatch);
-        try {
-          const { data: userData } = await supabase.auth.getUser();
-          if (userData?.user) {
-            const meta = userData.user.user_metadata || {};
-            await supabase.from('blacklist').insert({
-              user_id: userData.user.id,
-              discord_id: meta.provider_id || null,
-              discord_username: meta.full_name || meta.name || null,
-              reason: 'identity_mismatch',
-              claimed_code: localNorm,
-              actual_code: actualCodes[0],
-              replay_file: replayName,
-            });
-            await supabase.from('profiles').update({
-              connect_code: null,
-              slippi_uid: null,
-              verified: false,
-              verified_at: null,
-            }).eq('id', userData.user.id);
+        if (isEncodingMismatch) {
+          console.log(`[identity] Encoding-only mismatch for ${localNorm} — not a spoof`);
+        } else if (freshMatchesReplay) {
+          console.log(`[identity] user.json updated to ${freshNorm} which matches replay — account switch, not a spoof`);
+        } else if (actualCodes.length > 0) {
+          consecutiveMismatches++;
+          const replayName = path.basename(filePath);
+          console.warn(
+            `[identity] Mismatch strike ${consecutiveMismatches}/${MISMATCH_STRIKE_THRESHOLD}:`,
+            { claimedCode: localNorm, actualCode: actualCodes[0], replayFile: replayName },
+          );
+
+          if (consecutiveMismatches >= MISMATCH_STRIKE_THRESHOLD) {
+            const mismatch: IdentityMismatch = {
+              claimedCode: localNorm,
+              actualCode: actualCodes[0],
+              replayFile: replayName,
+            };
+            console.warn('[identity] MISMATCH CONFIRMED after consecutive strikes:', mismatch);
+            try {
+              const { data: userData } = await supabase.auth.getUser();
+              if (userData?.user) {
+                const meta = userData.user.user_metadata || {};
+                await supabase.from('blacklist').insert({
+                  user_id: userData.user.id,
+                  discord_id: meta.provider_id || null,
+                  discord_username: meta.full_name || meta.name || null,
+                  reason: 'identity_mismatch',
+                  claimed_code: localNorm,
+                  actual_code: actualCodes[0],
+                  replay_file: replayName,
+                });
+                await supabase.from('profiles').update({
+                  connect_code: null,
+                  slippi_uid: null,
+                  verified: false,
+                  verified_at: null,
+                }).eq('id', userData.user.id);
+              }
+            } catch (e) {
+              console.error('Failed to blacklist/unlink spoofed profile', e);
+            }
+            if (onIdentityMismatch) onIdentityMismatch(mismatch);
           }
-        } catch (e) {
-          console.error('Failed to blacklist/unlink spoofed profile', e);
         }
-        if (onIdentityMismatch) onIdentityMismatch(mismatch);
       }
     }
 

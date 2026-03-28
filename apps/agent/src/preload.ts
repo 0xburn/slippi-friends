@@ -49,6 +49,8 @@ const api = {
 
   discoverPlayers: (characterIds?: number[]) => ipcRenderer.invoke('discover:list', characterIds),
 
+  getLeaderboard: (limit?: number) => ipcRenderer.invoke('leaderboard:top', limit) as Promise<{ userId: string; connectCode: string; displayName: string; avatarUrl: string | null; mainCharacter: number | null; onlineSeconds: number; inGameSeconds: number; totalSeconds: number }[]>,
+
   getPlayerCount: () => ipcRenderer.invoke('stats:playerCount'),
   getLivePresence: () => ipcRenderer.invoke('stats:livePresence') as Promise<{ online: number; inGame: number }>,
   getPresenceStats: () => ipcRenderer.invoke('stats:presence'),

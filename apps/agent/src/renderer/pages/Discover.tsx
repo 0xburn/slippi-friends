@@ -158,6 +158,7 @@ export function Discover() {
   const [visibleCount, setVisibleCount] = useState(15);
   const [confirmBlock, setConfirmBlock] = useState<string | null>(null);
   const [charFilter, setCharFilter] = useState<Set<number>>(new Set());
+  const [search, setSearch] = useState('');
   const charFilterRef = useRef(charFilter);
   charFilterRef.current = charFilter;
 
@@ -221,6 +222,17 @@ export function Discover() {
   const ago = Math.round((Date.now() - lastRefresh) / 1000);
   const refreshLabel = ago < 5 ? 'just now' : `${ago}s ago`;
 
+  const filtered = search
+    ? players.filter((p) => {
+        const q = search.toLowerCase();
+        return (
+          p.connectCode?.toLowerCase().includes(q) ||
+          p.displayName?.toLowerCase().includes(q) ||
+          p.discordUsername?.toLowerCase().includes(q)
+        );
+      })
+    : players;
+
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center justify-between">
@@ -244,6 +256,14 @@ export function Discover() {
         onClear={clearFilter}
       />
 
+      <input
+        type="text"
+        value={search}
+        onChange={(e) => { setSearch(e.target.value); setVisibleCount(15); }}
+        placeholder="Search by code, name, or Discord..."
+        className="w-full rounded-lg border border-[#2a2a2a] bg-[#0a0a0a] px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#21BA45]/50"
+      />
+
       <div className="space-y-2">
         {loading && players.length === 0 && (
           <>
@@ -253,7 +273,7 @@ export function Discover() {
           </>
         )}
 
-        {!loading && players.length === 0 && charFilter.size === 0 && (
+        {!loading && filtered.length === 0 && !search && charFilter.size === 0 && (
           <div className="rounded-2xl border border-[#2a2a2a] bg-[#141414] p-12 text-center">
             <p className="text-gray-500 text-sm">
               No players online right now. Check back later!
@@ -261,15 +281,15 @@ export function Discover() {
           </div>
         )}
 
-        {!loading && players.length === 0 && charFilter.size > 0 && (
+        {!loading && filtered.length === 0 && (search || charFilter.size > 0) && (
           <div className="rounded-2xl border border-[#2a2a2a] bg-[#141414] p-12 text-center">
             <p className="text-gray-500 text-sm">
-              No players match the selected characters.
+              {search ? 'No players match your search.' : 'No players match the selected characters.'}
             </p>
           </div>
         )}
 
-        {players.slice(0, visibleCount).map((p) => {
+        {filtered.slice(0, visibleCount).map((p) => {
           const state = adding === p.connectCode ? 'adding' : (addedMap.get(p.connectCode) ?? null);
           return (
             <div key={p.userId} className="space-y-1">
@@ -308,7 +328,7 @@ export function Discover() {
           );
         })}
 
-        {players.length > visibleCount && visibleCount < 100 && (
+        {filtered.length > visibleCount && visibleCount < 100 && (
           <button
             onClick={() => setVisibleCount((c) => Math.min(c + 15, 100))}
             className="w-full rounded-xl border border-[#2a2a2a] bg-[#141414] py-3 text-sm font-medium text-gray-400 hover:text-white hover:bg-[#1a1a1a] transition-colors"
@@ -316,7 +336,7 @@ export function Discover() {
             Load more
           </button>
         )}
-        {players.length > 0 && (visibleCount >= players.length || visibleCount >= 100) && (
+        {filtered.length > 0 && (visibleCount >= filtered.length || visibleCount >= 100) && (
           <p className="text-center text-xs text-gray-600 py-3">
             Surely someone in this list is good enough for you!
           </p>

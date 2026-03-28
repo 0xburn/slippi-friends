@@ -664,6 +664,31 @@ export function registerIpcHandlers(
     } catch { return { online: 0, inGame: 0 }; }
   });
 
+  ipcMain.handle('leaderboard:top', async (_e, limit = 50) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_activity')
+        .select('user_id, online_seconds, in_game_seconds, total_seconds, profiles(connect_code, display_name, avatar_url, main_character)')
+        .order('total_seconds', { ascending: false })
+        .gt('total_seconds', 0)
+        .limit(limit);
+      if (error) { console.error('leaderboard:top', error.message); return []; }
+      return (data || []).map((row: any) => {
+        const p = row.profiles;
+        return {
+          userId: row.user_id,
+          connectCode: p?.connect_code ?? '',
+          displayName: p?.display_name ?? '',
+          avatarUrl: p?.avatar_url ?? null,
+          mainCharacter: p?.main_character ?? null,
+          onlineSeconds: row.online_seconds,
+          inGameSeconds: row.in_game_seconds,
+          totalSeconds: row.total_seconds,
+        };
+      });
+    } catch (e) { console.error('leaderboard:top', e); return []; }
+  });
+
   ipcMain.handle('presence:online', () => getOnlineUsers());
   ipcMain.handle('presence:localStatus', () => getCurrentStatus());
   ipcMain.handle('presence:connectionType', () => getConnectionType());
