@@ -419,13 +419,13 @@ async function pushPresence(
           }
         }
       } else {
-        if (lastDbWriteTime > 0 && (status === 'online' || status === 'in-game')) {
+        if (lastDbWriteTime > 0 && status === 'in-game' && opCode) {
           const deltaSec = Math.min(Math.round((now - lastDbWriteTime) / 1000), 180);
           if (deltaSec > 0) {
             supabase.rpc('increment_activity', {
               p_user_id: userId,
               p_seconds: deltaSec,
-              p_in_game: status === 'in-game',
+              p_in_game: true,
             }).then(({ error: actErr }) => {
               if (actErr) console.error('[activity] increment failed:', actErr.message);
             });

@@ -7,12 +7,8 @@ interface LeaderboardEntry {
   displayName: string;
   avatarUrl: string | null;
   mainCharacter: number | null;
-  onlineSeconds: number;
   inGameSeconds: number;
-  totalSeconds: number;
 }
-
-type SortKey = 'total' | 'inGame' | 'online';
 
 function formatHours(seconds: number): string {
   const h = seconds / 3600;
@@ -46,22 +42,9 @@ function SkeletonRow() {
   );
 }
 
-const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  { key: 'total', label: 'Total' },
-  { key: 'inGame', label: 'In-Game' },
-  { key: 'online', label: 'Online' },
-];
-
-function getSortValue(entry: LeaderboardEntry, key: SortKey): number {
-  if (key === 'inGame') return entry.inGameSeconds;
-  if (key === 'online') return entry.onlineSeconds;
-  return entry.totalSeconds;
-}
-
 export function Leaderboard() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sortKey, setSortKey] = useState<SortKey>('total');
   const [myCode, setMyCode] = useState<string | null>(null);
 
   useEffect(() => {
@@ -82,53 +65,29 @@ export function Leaderboard() {
     setLoading(false);
   }
 
-  const sorted = [...entries].sort(
-    (a, b) => getSortValue(b, sortKey) - getSortValue(a, sortKey),
-  );
-
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-display font-bold text-white">Leaderboard</h1>
-          <p className="text-xs text-gray-500 mt-0.5">Hours spent on friendlies</p>
-        </div>
-        <div className="flex items-center gap-1 rounded-lg border border-[#2a2a2a] bg-[#111] p-0.5">
-          {SORT_OPTIONS.map((opt) => (
-            <button
-              key={opt.key}
-              onClick={() => setSortKey(opt.key)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                sortKey === opt.key
-                  ? 'bg-[#21BA45]/15 text-[#21BA45]'
-                  : 'text-gray-500 hover:text-gray-300'
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
+      <div>
+        <h1 className="text-xl font-display font-bold text-white">Leaderboard</h1>
+        <p className="text-xs text-gray-500 mt-0.5">Hours spent playing Melee on friendlies</p>
       </div>
 
       <div className="rounded-xl border border-[#2a2a2a] bg-[#111] overflow-hidden">
-        {/* Header */}
         <div className="flex items-center gap-3 px-4 py-2.5 border-b border-[#2a2a2a] text-[10px] font-medium text-gray-500 uppercase tracking-wider">
           <span className="w-6 text-center">#</span>
           <span className="w-8" />
           <span className="flex-1">Player</span>
-          <span className="w-16 text-right">In-Game</span>
-          <span className="w-16 text-right">Online</span>
-          <span className="w-16 text-right font-semibold text-gray-400">Total</span>
+          <span className="w-20 text-right">Time Played</span>
         </div>
 
         {loading ? (
           Array.from({ length: 10 }).map((_, i) => <SkeletonRow key={i} />)
-        ) : sorted.length === 0 ? (
+        ) : entries.length === 0 ? (
           <div className="px-4 py-12 text-center text-sm text-gray-500">
-            No activity yet. Keep the app running to climb the leaderboard!
+            No activity yet. Play some Melee to climb the leaderboard!
           </div>
         ) : (
-          sorted.map((entry, i) => {
+          entries.map((entry, i) => {
             const rank = i + 1;
             const isMe = myCode === entry.connectCode;
             return (
@@ -140,7 +99,6 @@ export function Leaderboard() {
                     : 'hover:bg-white/[0.02] border-l-2 border-transparent'
                 } ${i > 0 ? 'border-t border-[#1a1a1a]' : ''}`}
               >
-                {/* Rank */}
                 <span className={`w-6 text-center text-xs font-bold ${
                   rank === 1 ? 'text-yellow-400' :
                   rank === 2 ? 'text-gray-300' :
@@ -150,7 +108,6 @@ export function Leaderboard() {
                   {rank}
                 </span>
 
-                {/* Avatar */}
                 <div className="w-8 h-8 rounded-full bg-[#1a1a1a] shrink-0 flex items-center justify-center overflow-hidden">
                   {entry.avatarUrl ? (
                     <img
@@ -166,7 +123,6 @@ export function Leaderboard() {
                   )}
                 </div>
 
-                {/* Name + code */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className={`text-sm font-medium truncate ${isMe ? 'text-[#21BA45]' : 'text-white'}`}>
@@ -183,20 +139,9 @@ export function Leaderboard() {
                   )}
                 </div>
 
-                {/* In-game hours */}
-                <span className="w-16 text-right text-xs text-orange-400/80 font-mono tabular-nums">
+                <span className="w-20 text-right text-sm font-semibold text-white font-mono tabular-nums"
+                  title={formatHoursLong(entry.inGameSeconds)}>
                   {formatHours(entry.inGameSeconds)}
-                </span>
-
-                {/* Online hours */}
-                <span className="w-16 text-right text-xs text-blue-400/80 font-mono tabular-nums">
-                  {formatHours(entry.onlineSeconds)}
-                </span>
-
-                {/* Total hours */}
-                <span className="w-16 text-right text-sm font-semibold text-white font-mono tabular-nums"
-                  title={formatHoursLong(entry.totalSeconds)}>
-                  {formatHours(entry.totalSeconds)}
                 </span>
               </div>
             );
@@ -205,7 +150,7 @@ export function Leaderboard() {
       </div>
 
       <p className="text-[10px] text-gray-600 text-center">
-        Time is tracked while the app is open and you're online. Updated every ~2.5 minutes.
+        Tracks time playing against an opponent with the app open.
       </p>
     </div>
   );

@@ -668,9 +668,9 @@ export function registerIpcHandlers(
     try {
       const { data, error } = await supabase
         .from('user_activity')
-        .select('user_id, online_seconds, in_game_seconds, total_seconds, profiles(connect_code, display_name, avatar_url, main_character)')
-        .order('total_seconds', { ascending: false })
-        .gt('total_seconds', 0)
+        .select('user_id, in_game_seconds, profiles(connect_code, display_name, avatar_url, main_character)')
+        .order('in_game_seconds', { ascending: false })
+        .gt('in_game_seconds', 0)
         .limit(limit);
       if (error) { console.error('leaderboard:top', error.message); return []; }
       return (data || []).map((row: any) => {
@@ -681,9 +681,7 @@ export function registerIpcHandlers(
           displayName: p?.display_name ?? '',
           avatarUrl: p?.avatar_url ?? null,
           mainCharacter: p?.main_character ?? null,
-          onlineSeconds: row.online_seconds,
           inGameSeconds: row.in_game_seconds,
-          totalSeconds: row.total_seconds,
         };
       });
     } catch (e) { console.error('leaderboard:top', e); return []; }
