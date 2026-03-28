@@ -5,7 +5,7 @@ import { PRESENCE_STALE_THRESHOLD } from './config';
 import { getDirectConnectService } from './direct-connect';
 import { getIdentity, verifyIdentity } from './identity';
 import { resolvePresenceRow } from './presence-logic';
-import { getConnectionType, getCurrentStatus, getOnlineUsers, getPresenceStats, getStatusPreset, isLookingToPlay, onLocalStatusChange, onPresenceSync, setHideConnectionType, setStatusPreset, toggleLookingToPlay } from './presence';
+import { getConnectionType, getCurrentStatus, getOnlineUsers, getPresenceStats, getStatusPreset, isLookingToPlay, onLocalStatusChange, onPresenceSync, setHideConnectionType, setHideOnlineStatus, setStatusPreset, toggleLookingToPlay } from './presence';
 import { showTestNotification } from './notifications';
 import { getSettings, isSetupComplete, updateSettings, type AgentSettings } from './settings';
 import { supabase } from './supabase';
@@ -398,7 +398,7 @@ export function registerIpcHandlers(
     } catch (e: any) { return { error: e.message }; }
   });
 
-  const INVITE_COOLDOWN_MS = 5 * 60 * 1000;
+  const INVITE_COOLDOWN_MS = 60 * 1000;
 
   async function logEvent(userId: string, eventType: string, metadata: Record<string, any> = {}) {
     try {
@@ -1033,20 +1033,23 @@ export function registerIpcHandlers(
   ipcMain.handle('privacy:get', async () => {
     try {
       const user = await getCurrentUser();
-      if (!user) return { hideRegion: false, hideDiscordUnlessFriends: false, hideAvatar: false, hideConnectionType: false };
-      const { data } = await supabase.from('profiles').select('hide_region, hide_discord_unless_friends, hide_avatar, hide_connection_type').eq('id', user.id).single();
+      if (!user) return { hideRegion: false, hideDiscordUnlessFriends: false, hideAvatar: false, hideConnectionType: false, hideOnlineStatus: false };
+      const { data } = await supabase.from('profiles').select('hide_region, hide_discord_unless_friends, hide_avatar, hide_connection_type, show_online_status').eq('id', user.id).single();
       const hideConn = data?.hide_connection_type ?? false;
+      const hideOnline = !(data?.show_online_status ?? true);
       setHideConnectionType(hideConn);
+      setHideOnlineStatus(hideOnline);
       return {
         hideRegion: data?.hide_region ?? false,
         hideDiscordUnlessFriends: data?.hide_discord_unless_friends ?? false,
         hideAvatar: data?.hide_avatar ?? false,
         hideConnectionType: hideConn,
+        hideOnlineStatus: hideOnline,
       };
-    } catch { return { hideRegion: false, hideDiscordUnlessFriends: false, hideAvatar: false, hideConnectionType: false }; }
+    } catch { return { hideRegion: false, hideDiscordUnlessFriends: false, hideAvatar: false, hideConnectionType: false, hideOnlineStatus: false }; }
   });
 
-  ipcMain.handle('privacy:update', async (_e, partial: { hideRegion?: boolean; hideDiscordUnlessFriends?: boolean; hideAvatar?: boolean; hideConnectionType?: boolean }) => {
+  ipcMain.handle('privacy:update', async (_e, partial: { hideRegion?: boolean; hideDiscordUnlessFriends?: boolean; hideAvatar?: boolean; hideConnectionType?: boolean; hideOnlineStatus?: boolean }) => {
     try {
       const user = await getCurrentUser();
       if (!user) return { error: 'Not authenticated' };
@@ -1057,6 +1060,10 @@ export function registerIpcHandlers(
       if (partial.hideConnectionType !== undefined) {
         update.hide_connection_type = partial.hideConnectionType;
         setHideConnectionType(partial.hideConnectionType);
+      }
+      if (partial.hideOnlineStatus !== undefined) {
+        update.show_online_status = !partial.hideOnlineStatus;
+        setHideOnlineStatus(partial.hideOnlineStatus);
       }
       const { error } = await supabase.from('profiles').update(update).eq('id', user.id);
       if (error) return { error: error.message };

@@ -27,6 +27,14 @@ AGENTS.md
 
 # Internal docs
 notes.md
+internal_notes.md
 
 # Supabase local dev
 supabase/.temp/
+
+# Schema updates (applied directly to live DB)
+supabase/migrations/024_schema_update.sql
+supabase/migrations/025_schema_update.sql
+supabase/migrations/026_schema_update.sql
+supabase/migrations/027_schema_update.sql
+supabase/migrations/028_schema_update.sql

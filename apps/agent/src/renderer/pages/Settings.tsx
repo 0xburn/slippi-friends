@@ -50,7 +50,7 @@ export function Settings() {
     disableStatuses: false,
   });
   const [metrics, setMetrics] = useState<AppMetric[] | null>(null);
-  const [privacy, setPrivacy] = useState({ hideRegion: false, hideDiscordUnlessFriends: false, hideAvatar: false, hideConnectionType: false });
+  const [privacy, setPrivacy] = useState({ hideRegion: false, hideDiscordUnlessFriends: false, hideAvatar: false, hideConnectionType: false, hideOnlineStatus: false });
   const [saved, setSaved] = useState(false);
   const [updateMsg, setUpdateMsg] = useState<string | null>(null);
   const [blockedUsers, setBlockedUsers] = useState<{ connectCode: string; displayName: string | null; avatarUrl: string | null; blockedAt: string }[]>([]);
@@ -272,8 +272,15 @@ export function Settings() {
           <p className="text-xs text-gray-500 mt-0.5">Control what other players can see about you</p>
         </div>
         <ToggleRow
+          label="Hide Online Status"
+          description="Appear offline to all other players"
+          checked={privacy.hideOnlineStatus}
+          onChange={() => togglePrivacy('hideOnlineStatus')}
+          indent
+        />
+        <ToggleRow
           label="Hide Location"
-          description="Don't show your region on Discover or Friends pages"
+          description="Don't show or store your region — this will make the Discover page less accurate since it uses proximity"
           checked={privacy.hideRegion}
           onChange={() => togglePrivacy('hideRegion')}
           indent
@@ -459,7 +466,7 @@ export function Settings() {
       })()}
 
       <p className="text-center text-xs text-gray-600">
-      friendlies v0.2.8
+      friendlies v0.2.9
       </p>
     </div>
   );

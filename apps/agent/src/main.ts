@@ -60,18 +60,7 @@ function loadDotEnvFromAppDir(): void {
 async function fetchGeoWithFallback(): Promise<{ lat: number; lon: number; region: string } | null> {
   const timeout = (ms: number) => new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), ms));
 
-  // Primary: ip-api.com (HTTP, free, no key)
-  try {
-    const res = await Promise.race([fetch('http://ip-api.com/json/?fields=lat,lon,regionName,country'), timeout(5000)]);
-    if (res.ok) {
-      const d = await res.json();
-      if (typeof d.lat === 'number' && typeof d.lon === 'number') {
-        return { lat: d.lat, lon: d.lon, region: [d.regionName, d.country].filter(Boolean).join(', ') || '' };
-      }
-    }
-  } catch { /* try fallback */ }
-
-  // Fallback: ipwho.is (HTTPS, free, no key)
+  // Primary: ipwho.is (HTTPS, free, no key)
   try {
     const res = await Promise.race([fetch('https://ipwho.is/'), timeout(5000)]);
     if (res.ok) {
@@ -82,7 +71,7 @@ async function fetchGeoWithFallback(): Promise<{ lat: number; lon: number; regio
     }
   } catch { /* try fallback */ }
 
-  // Fallback 2: freeipapi.com (HTTPS, free, no key)
+  // Fallback: freeipapi.com (HTTPS, free, no key)
   try {
     const res = await Promise.race([fetch('https://freeipapi.com/api/json'), timeout(5000)]);
     if (res.ok) {

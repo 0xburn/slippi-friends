@@ -145,6 +145,7 @@ const DB_HEARTBEAT_INTERVAL = 150_000;
 
 let currentConnectionType: ConnectionType = null;
 let hideConnectionType = false;
+let hideOnlineStatus = false;
 let lastStaleCleanup = 0;
 const STALE_CLEANUP_INTERVAL = 5 * 60 * 1000;
 
@@ -183,6 +184,10 @@ export function setGameThrottling(enabled: boolean): void {
 
 export function setHideConnectionType(hidden: boolean): void {
   hideConnectionType = hidden;
+}
+
+export function setHideOnlineStatus(hidden: boolean): void {
+  hideOnlineStatus = hidden;
 }
 
 export function onGameActiveChange(cb: GameActiveCallback): () => void {
@@ -367,7 +372,9 @@ async function pushPresence(
     const now = Date.now();
     const shouldWriteDb = _shouldWriteDb(dirty, lastDbWriteTime, DB_HEARTBEAT_INTERVAL, now);
 
-    if (!shouldWriteDb) {
+    if (hideOnlineStatus) {
+      presenceStats.upsertSkipped++;
+    } else if (!shouldWriteDb) {
       presenceStats.upsertSkipped++;
     } else {
       const lfgActive = isLookingToPlay();

@@ -83,6 +83,7 @@ export function Friends() {
   const [hideRegion, setHideRegion] = useState(false);
   const [hideAvatar, setHideAvatar] = useState<boolean | null>(null);
   const [hideConnectionType, setHideConnectionType] = useState(false);
+  const [hideOnlineStatus, setHideOnlineStatus] = useState(false);
   const [myConnectionType, setMyConnectionType] = useState<'wifi' | 'ethernet' | null>(null);
   const [myMainCharId, setMyMainCharId] = useState<number | null>(null);
   const [myChosenMain, setMyChosenMain] = useState<number | null>(null);
@@ -137,6 +138,7 @@ export function Friends() {
       setHideRegion(p.hideRegion);
       setHideAvatar(p.hideAvatar);
       setHideConnectionType(p.hideConnectionType);
+      setHideOnlineStatus(p.hideOnlineStatus);
     }).catch(() => {});
     window.api.getConnectionType().then(setMyConnectionType).catch(() => {});
 
@@ -206,6 +208,7 @@ export function Friends() {
           setHideRegion(p.hideRegion);
           setHideAvatar(p.hideAvatar);
           setHideConnectionType(p.hideConnectionType);
+          setHideOnlineStatus(p.hideOnlineStatus);
         }).catch(() => {});
       }
     };
@@ -545,12 +548,12 @@ export function Friends() {
                   {myIdentity.connectCode}
                 </span>
                 <OnlineIndicator
-                  status={myStatus}
+                  status={hideOnlineStatus ? 'offline' : myStatus}
                   size="md"
-                  opponentCode={myOpponentCode}
-                  opponentCharacterId={myOppCharId}
-                  characterId={myCharacterId}
-                  playingSince={myPlayingSince}
+                  opponentCode={hideOnlineStatus ? null : myOpponentCode}
+                  opponentCharacterId={hideOnlineStatus ? null : myOppCharId}
+                  characterId={hideOnlineStatus ? null : myCharacterId}
+                  playingSince={hideOnlineStatus ? null : myPlayingSince}
                 />
               </div>
               <div className="flex items-center gap-2 mt-0.5">
