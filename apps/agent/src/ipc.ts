@@ -4,6 +4,7 @@ import { getCurrentUser, handleAuthCallback, isAuthenticated, logout, startAuthF
 import { PRESENCE_STALE_THRESHOLD } from './config';
 import { getDirectConnectService } from './direct-connect';
 import { getIdentity, verifyIdentity } from './identity';
+import { getCachedGeo } from './geo-cache';
 import { resolvePresenceRow } from './presence-logic';
 import { getConnectionType, getCurrentStatus, getOnlineUsers, getPresenceStats, getStatusPreset, isLookingToPlay, onLocalStatusChange, onPresenceSync, setHideConnectionType, setHideOnlineStatus, setStatusPreset, toggleLookingToPlay } from './presence';
 import { showTestNotification } from './notifications';
@@ -721,8 +722,9 @@ export function registerIpcHandlers(
         supabase.from('friends').select('friend_id').eq('user_id', user.id),
         supabase.from('blocked_users').select('blocked_user_id, blocked_connect_code').eq('user_id', user.id),
       ]);
-      const myLat = myProfile?.latitude ?? null;
-      const myLng = myProfile?.longitude ?? null;
+      const localGeo = getCachedGeo();
+      const myLat = myProfile?.latitude ?? localGeo?.lat ?? null;
+      const myLng = myProfile?.longitude ?? localGeo?.lon ?? null;
 
       const friendIds = new Set(
         (friendRows || []).map((f: any) => f.friend_id).filter(Boolean),
@@ -790,7 +792,7 @@ export function registerIpcHandlers(
         }
       }
 
-      const myRegion = myProfile?.region as string | null ?? null;
+      const myRegion = (myProfile?.region as string | null) ?? localGeo?.region ?? null;
       const myCountry = myRegion?.split(',').pop()?.trim() ?? null;
 
       let results = presenceRows

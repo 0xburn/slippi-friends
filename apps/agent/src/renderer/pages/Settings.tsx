@@ -280,7 +280,7 @@ export function Settings() {
         />
         <ToggleRow
           label="Hide Location"
-          description="Don't show or store your region — this will make the Discover page less accurate since it uses proximity"
+          description="Don't show your region to other players"
           checked={privacy.hideRegion}
           onChange={() => togglePrivacy('hideRegion')}
           indent
@@ -466,7 +466,7 @@ export function Settings() {
       })()}
 
       <p className="text-center text-xs text-gray-600">
-      friendlies v0.2.9
+      friendlies v0.2.10
       </p>
     </div>
   );

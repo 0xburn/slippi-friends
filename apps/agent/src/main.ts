@@ -18,6 +18,7 @@ import {
 } from './tray';
 import { checkForUpdates, initAutoUpdater } from './updater';
 import { setIdentityMismatchHandler, startWatcher, stopWatcher } from './watcher';
+import { setCachedGeo } from './geo-cache';
 
 let mainWindow: BrowserWindow | null = null;
 let friendPollTimer: ReturnType<typeof setInterval> | null = null;
@@ -408,6 +409,7 @@ async function refreshAgentState(): Promise<void> {
       try {
         const geo = await fetchGeoWithFallback();
         if (geo) {
+          setCachedGeo(geo);
           profileUpdate.latitude = geo.lat;
           profileUpdate.longitude = geo.lon;
           profileUpdate.region = geo.region;
