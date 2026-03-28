@@ -8,7 +8,7 @@ interface LeaderboardEntry {
   avatarUrl: string | null;
   mainCharacter: number | null;
   inGameSeconds: number;
-  todaySeconds: number;
+  rankChange: number;
 }
 
 function formatHours(seconds: number): string {
@@ -78,7 +78,7 @@ export function Leaderboard() {
           <span className="w-6 text-center">#</span>
           <span className="w-8" />
           <span className="flex-1">Player</span>
-          <span className="w-16 text-right">Today</span>
+          <span className="w-12 text-right">Change</span>
           <span className="w-20 text-right">Total</span>
         </div>
 
@@ -141,8 +141,14 @@ export function Leaderboard() {
                   )}
                 </div>
 
-                <span className="w-16 text-right text-xs font-mono tabular-nums text-[#21BA45]/80">
-                  {entry.todaySeconds > 0 ? `+${formatHours(entry.todaySeconds)}` : '--'}
+                <span className={`w-12 text-right text-xs font-semibold tabular-nums ${
+                  entry.rankChange > 0 ? 'text-[#21BA45]' :
+                  entry.rankChange < 0 ? 'text-red-400' :
+                  'text-gray-600'
+                }`}>
+                  {entry.rankChange > 0 ? `+${entry.rankChange}` :
+                   entry.rankChange < 0 ? `${entry.rankChange}` :
+                   '--'}
                 </span>
 
                 <span className="w-20 text-right text-sm font-semibold text-white font-mono tabular-nums"

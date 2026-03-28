@@ -673,16 +673,28 @@ export function registerIpcHandlers(
         .gt('in_game_seconds', 0)
         .limit(limit);
       if (error) { console.error('leaderboard:top', error.message); return []; }
-      return (data || []).map((row: any) => {
+      const rows = (data || []).map((row: any) => ({
+        userId: row.user_id,
+        profiles: row.profiles,
+        inGameSeconds: row.in_game_seconds ?? 0,
+        yesterdaySeconds: row.yesterday_seconds ?? 0,
+      }));
+      const yesterdayRanks = new Map<string, number>();
+      [...rows]
+        .sort((a, b) => b.yesterdaySeconds - a.yesterdaySeconds)
+        .forEach((r, i) => { yesterdayRanks.set(r.userId, i + 1); });
+      return rows.map((row, i) => {
         const p = row.profiles;
+        const todayRank = i + 1;
+        const yRank = yesterdayRanks.get(row.userId) ?? todayRank;
         return {
-          userId: row.user_id,
+          userId: row.userId,
           connectCode: p?.connect_code ?? '',
           displayName: p?.display_name ?? '',
           avatarUrl: p?.avatar_url ?? null,
           mainCharacter: p?.main_character ?? null,
-          inGameSeconds: row.in_game_seconds,
-          todaySeconds: (row.in_game_seconds ?? 0) - (row.yesterday_seconds ?? 0),
+          inGameSeconds: row.inGameSeconds,
+          rankChange: yRank - todayRank,
         };
       });
     } catch (e) { console.error('leaderboard:top', e); return []; }
