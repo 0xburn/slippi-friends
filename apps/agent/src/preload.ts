@@ -23,7 +23,7 @@ const api = {
 
   getFriends: () => ipcRenderer.invoke('friends:list'),
   getIncomingRequests: () => ipcRenderer.invoke('friends:incoming'),
-  addFriend: (connectCode: string) => ipcRenderer.invoke('friends:add', connectCode),
+  addFriend: (connectCode: string, note?: string) => ipcRenderer.invoke('friends:add', connectCode, note),
   acceptFriend: (requestId: string) => ipcRenderer.invoke('friends:accept', requestId),
   declineFriend: (requestId: string) => ipcRenderer.invoke('friends:decline', requestId),
   removeFriend: (friendshipId: string) => ipcRenderer.invoke('friends:remove', friendshipId),

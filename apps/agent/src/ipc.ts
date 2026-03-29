@@ -192,7 +192,7 @@ export function registerIpcHandlers(
 
       const { data: rawData } = await supabase
         .from('friends')
-        .select('id, user_id, friend_connect_code, status, created_at, profiles!friends_user_id_fkey(connect_code, display_name, discord_username, discord_id, avatar_url, hide_discord_unless_friends, hide_avatar)')
+        .select('id, user_id, friend_connect_code, status, created_at, note, profiles!friends_user_id_fkey(connect_code, display_name, discord_username, discord_id, avatar_url, hide_discord_unless_friends, hide_avatar)')
         .eq('friend_connect_code', profile.connect_code)
         .eq('status', 'pending');
       if (!rawData) return [];
@@ -223,6 +223,7 @@ export function registerIpcHandlers(
           avatarUrl: p?.hide_avatar ? null : (p?.avatar_url || null),
           rating: c.rating_ordinal ?? null,
           characterId: c.characters?.[0]?.character ?? null,
+          note: f.note || null,
         };
       });
       console.log(`[bench] friends:incoming total=${(performance.now()-t0).toFixed(0)}ms rows=${data.length}`);
@@ -280,7 +281,7 @@ export function registerIpcHandlers(
     } catch (e: any) { return { error: e.message }; }
   });
 
-  ipcMain.handle('friends:add', async (_e, connectCode: string) => {
+  ipcMain.handle('friends:add', async (_e, connectCode: string, note?: string) => {
     try {
       const user = await getCurrentUser();
       if (!user) return { error: 'Not authenticated' };
@@ -362,6 +363,7 @@ export function registerIpcHandlers(
         user_id: user.id,
         friend_connect_code: connectCode,
         status: 'pending',
+        note: note || null,
       };
       if (target) row.friend_id = target.id;
 

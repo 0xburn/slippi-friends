@@ -32,6 +32,7 @@ interface IncomingRequest {
   avatarUrl?: string;
   rating: number | null;
   characterId: number | null;
+  note?: string | null;
 }
 
 function SkeletonCard() {
@@ -55,6 +56,8 @@ export function Friends() {
   const [addCode, setAddCode] = useState('');
   const [addError, setAddError] = useState('');
   const [addLoading, setAddLoading] = useState(false);
+  const [addNoteModal, setAddNoteModal] = useState(false);
+  const [addNote, setAddNote] = useState<string | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
   const [responding, setResponding] = useState<string | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -337,20 +340,29 @@ export function Friends() {
     };
   }, [enriched, search, statusFilter]);
 
-  async function handleAdd() {
+  function handleAddClick() {
     const code = addCode.trim().toUpperCase();
     if (!code) return;
     if (!code.includes('#')) {
       setAddError('Connect codes must include # (e.g. ABCD#123)');
       return;
     }
+    setAddError('');
+    setAddNote(null);
+    setAddNoteModal(true);
+  }
+
+  async function handleAddConfirm() {
+    const code = addCode.trim().toUpperCase();
+    setAddNoteModal(false);
     setAddLoading(true);
     setAddError('');
-    const result = await window.api.addFriend(code);
+    const result = await window.api.addFriend(code, addNote ?? undefined);
     if (result.error) {
       setAddError(result.error);
     } else {
       setAddCode('');
+      setAddNote(null);
       await loadFriends();
       if (result.mutual) await loadIncoming();
     }
@@ -534,7 +546,7 @@ export function Friends() {
               myMainCharId != null ? (
                 <div className="w-10 h-10 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center overflow-hidden shrink-0">
                   {getCharacterImagePath(myMainCharId) ? (
-                    <img src={getCharacterImagePath(myMainCharId)} alt={getCharacterShortName(myMainCharId)} className="w-10 h-10 object-contain scale-[2]" />
+                    <img src={getCharacterImagePath(myMainCharId)} alt={getCharacterShortName(myMainCharId)} className="w-7 h-7 object-contain" />
                   ) : (
                     <span className="text-xs font-bold text-gray-400">{getCharacterShortName(myMainCharId).slice(0, 2)}</span>
                   )}
@@ -678,7 +690,7 @@ export function Friends() {
                           myChosenMain === id ? 'text-[#21BA45] bg-[#21BA45]/10' : 'text-gray-300 hover:text-white hover:bg-white/5'
                         }`}
                       >
-                        {getCharacterImagePath(id) && <img src={getCharacterImagePath(id)} alt="" className="w-10 h-10 object-contain" />}
+                        {getCharacterImagePath(id) && <img src={getCharacterImagePath(id)} alt="" className="w-9 h-9 object-contain" />}
                         {CHARACTER_MAP[id]}
                       </button>
                     ))}
@@ -708,14 +720,19 @@ export function Friends() {
                 </div>
                 {inv.status === 'accepted' ? (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-[#21BA45]">Both Players are Ready!</span>
-                    <button
-                      onClick={() => handleDirectConnect(inv.connectCode, inv.id)}
-                      disabled={dcStarting}
-                      className="shrink-0 rounded-lg bg-blue-500 px-4 py-2 text-sm font-bold text-white hover:bg-blue-600 transition-colors disabled:opacity-40"
-                    >
-                      Open Melee
-                    </button>
+                    <div className="flex flex-col items-end gap-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-[#21BA45]">Both Players are Ready!</span>
+                        <button
+                          onClick={() => handleDirectConnect(inv.connectCode, inv.id)}
+                          disabled={dcStarting}
+                          className="shrink-0 rounded-lg bg-blue-500 px-4 py-2 text-sm font-bold text-white hover:bg-blue-600 transition-colors disabled:opacity-40"
+                        >
+                          Open Melee
+                        </button>
+                      </div>
+                      <span className="text-xs text-gray-500">(connect code will be pre-filled in Direct mode!)</span>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
@@ -747,14 +764,19 @@ export function Friends() {
                 </div>
                 {inv.status === 'accepted' ? (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-[#21BA45]">Both Players are Ready!</span>
-                    <button
-                      onClick={() => handleDirectConnect(inv.connectCode, inv.id)}
-                      disabled={dcStarting}
-                      className="shrink-0 rounded-lg bg-blue-500 px-4 py-2 text-sm font-bold text-white hover:bg-blue-600 transition-colors disabled:opacity-40"
-                    >
-                      Open Melee
-                    </button>
+                    <div className="flex flex-col items-end gap-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-[#21BA45]">Both Players are Ready!</span>
+                        <button
+                          onClick={() => handleDirectConnect(inv.connectCode, inv.id)}
+                          disabled={dcStarting}
+                          className="shrink-0 rounded-lg bg-blue-500 px-4 py-2 text-sm font-bold text-white hover:bg-blue-600 transition-colors disabled:opacity-40"
+                        >
+                          Open Melee
+                        </button>
+                      </div>
+                      <span className="text-xs text-gray-500">(connect code will be pre-filled in Direct mode!)</span>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
@@ -840,19 +862,19 @@ export function Friends() {
           type="text"
           value={addCode}
           onChange={(e) => setAddCode(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+          onKeyDown={(e) => e.key === 'Enter' && handleAddClick()}
           placeholder="Add by connect code (e.g. ABCD#123)"
           className="flex-1 rounded-lg border border-[#2a2a2a] bg-[#0a0a0a] px-4 py-2.5 text-sm font-mono text-white placeholder-gray-600 focus:outline-none focus:border-[#21BA45]/50"
         />
         <button
-          onClick={handleAdd}
+          onClick={handleAddClick}
           disabled={addLoading || !addCode.trim()}
           className="shrink-0 rounded-lg bg-[#21BA45] px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#1ea33e] disabled:opacity-40"
         >
           {addLoading ? '...' : 'Add'}
         </button>
       </div>
-      {addError && <p className="text-red-400 text-xs -mt-4">{addError}</p>}
+      {addError && <p className="text-red-400 text-xs">{addError}</p>}
 
       {/* Incoming Requests */}
       {incoming.length > 0 && (
@@ -875,6 +897,9 @@ export function Friends() {
                   <p className="text-xs text-gray-400 truncate">
                     {req.displayName || `@${req.discordUsername}`}
                   </p>
+                )}
+                {req.note && (
+                  <p className="text-xs text-gray-500 italic truncate">&ldquo;{req.note}&rdquo;</p>
                 )}
               </div>
               <div className="flex gap-2 shrink-0">
@@ -908,15 +933,24 @@ export function Friends() {
       {/* Pending Outgoing */}
       {pendingOut.length > 0 && (
         <div className="space-y-2">
-          <div className="flex items-center gap-3">
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
-              Pending ({pendingOut.length})
-            </h2>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
+                Pending ({pendingOut.length})
+              </h2>
+              {!pendingHidden && (
+                <span className="text-[11px] text-gray-600 italic">Tip: you can collapse these!</span>
+              )}
+            </div>
             <button
               onClick={() => setPendingHidden((h) => !h)}
-              className="rounded-md border border-[#2a2a2a] bg-[#1a1a1a] px-2.5 py-0.5 text-xs font-medium text-gray-400 hover:text-white hover:border-[#3a3a3a] transition-colors"
+              className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                pendingHidden
+                  ? 'border border-[#21BA45]/30 bg-[#21BA45]/10 text-[#21BA45] hover:bg-[#21BA45]/20'
+                  : 'border border-[#2a2a2a] bg-[#1a1a1a] text-gray-400 hover:text-white hover:border-[#3a3a3a]'
+              }`}
             >
-              {pendingHidden ? 'Show' : 'Hide'}
+              {pendingHidden ? `Show (${pendingOut.length})` : 'Hide'}
             </button>
           </div>
           {!pendingHidden && pendingOut.map((f) => (
@@ -1014,6 +1048,47 @@ export function Friends() {
                   className="flex-1 rounded-lg bg-red-500/20 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-500/30 transition-colors"
                 >
                   Block
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {addNoteModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setAddNoteModal(false)}>
+            <div className="rounded-2xl border border-[#2a2a2a] bg-[#141414] p-6 w-[360px] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <p className="text-sm text-white font-semibold text-center">
+                Add <span className="font-mono text-[#21BA45]">{addCode.trim().toUpperCase()}</span>
+              </p>
+              <p className="text-xs text-gray-400 text-center mt-2 leading-relaxed">
+                When adding a player, it often helps to let them know a bit more info on what you're looking for! Notes are optional.
+              </p>
+              <div className="flex flex-wrap gap-2 mt-4 justify-center">
+                {['Looking for MU practice', 'GGs from unranked', 'Same region', 'Just saying hi', 'Similar skill level'].map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={() => setAddNote(addNote === tag ? null : tag)}
+                    className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
+                      addNote === tag
+                        ? 'bg-[#21BA45]/20 text-[#21BA45] border border-[#21BA45]/40'
+                        : 'bg-[#1a1a1a] text-gray-400 border border-[#2a2a2a] hover:border-gray-500'
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-3 mt-5">
+                <button
+                  onClick={() => { setAddNote(null); setAddNoteModal(false); }}
+                  className="flex-1 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-white hover:bg-[#222] transition-colors"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={handleAddConfirm}
+                  className="flex-1 rounded-lg bg-[#21BA45] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#1ea33e] transition-colors"
+                >
+                  {addNote ? 'Send with note' : 'Send without note'}
                 </button>
               </div>
             </div>

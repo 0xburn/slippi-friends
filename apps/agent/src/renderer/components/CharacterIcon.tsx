@@ -5,11 +5,11 @@ export function CharacterIcon({ characterId, showName = false, size = 'md' }: {
 }) {
   const name = getCharacterShortName(characterId);
   const imgPath = getCharacterImagePath(characterId);
-  const sizes = { sm: 'h-6', md: 'h-8', lg: 'h-10' };
+  const sizes = { sm: 'h-5', md: 'h-7', lg: 'h-9' };
 
   if (!imgPath) {
     const hue = (characterId * 37) % 360;
-    const boxSizes = { sm: 'w-6 h-6 text-[10px]', md: 'w-8 h-8 text-xs', lg: 'w-10 h-10 text-sm' };
+    const boxSizes = { sm: 'w-5 h-5 text-[10px]', md: 'w-7 h-7 text-xs', lg: 'w-9 h-9 text-sm' };
     return (
       <div className="inline-flex items-center gap-1.5">
         <div className={`${boxSizes[size]} rounded-full flex items-center justify-center font-bold font-mono`}

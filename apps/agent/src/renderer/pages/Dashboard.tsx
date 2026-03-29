@@ -99,7 +99,7 @@ export function Dashboard() {
               mainCharId != null ? (
                 <div className="w-12 h-12 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center overflow-hidden shrink-0">
                   {getCharacterImagePath(mainCharId) ? (
-                    <img src={getCharacterImagePath(mainCharId)} alt={getCharacterShortName(mainCharId)} className="w-12 h-12 object-contain scale-[2]" />
+                    <img src={getCharacterImagePath(mainCharId)} alt={getCharacterShortName(mainCharId)} className="w-9 h-9 object-contain" />
                   ) : (
                     <span className="text-xs font-bold text-gray-400">{getCharacterShortName(mainCharId).slice(0, 2)}</span>
                   )}

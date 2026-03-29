@@ -87,7 +87,7 @@ function CharacterFilter({ selected, onToggle, onClear }: {
               onClick={() => onToggle(id)}
               title={CHARACTER_MAP[id]}
               className={`
-                relative h-14 w-14 rounded-xl border transition-all flex items-center justify-center
+                relative h-10 w-10 rounded-lg border transition-all flex items-center justify-center
                 ${active
                   ? 'border-[#21BA45]/60 bg-[#21BA45]/15 ring-1 ring-[#21BA45]/30'
                   : 'border-[#2a2a2a] bg-[#141414] opacity-60 hover:opacity-90 hover:border-[#3a3a3a]'
@@ -95,7 +95,7 @@ function CharacterFilter({ selected, onToggle, onClear }: {
               `}
             >
               {imgPath ? (
-                <img src={imgPath} alt={name} className="h-11 object-contain" loading="lazy" />
+                <img src={imgPath} alt={name} className="h-8 object-contain" loading="lazy" />
               ) : (
                 <span className="text-xs font-bold text-gray-400">{name.slice(0, 2)}</span>
               )}
@@ -105,7 +105,7 @@ function CharacterFilter({ selected, onToggle, onClear }: {
         <button
           onClick={() => setExpanded(!expanded)}
           className={`
-            relative h-14 px-3 rounded-xl border transition-all flex items-center justify-center
+            relative h-10 px-3 rounded-lg border transition-all flex items-center justify-center
             ${expanded || hasRestSelected
               ? 'border-[#3a3a3a] bg-[#1a1a1a] text-gray-300'
               : 'border-[#2a2a2a] bg-[#141414] text-gray-500 opacity-60 hover:opacity-90 hover:border-[#3a3a3a]'
@@ -127,7 +127,7 @@ function CharacterFilter({ selected, onToggle, onClear }: {
                 onClick={() => onToggle(id)}
                 title={CHARACTER_MAP[id]}
                 className={`
-                  relative h-14 w-14 rounded-xl border transition-all flex items-center justify-center
+                  relative h-10 w-10 rounded-lg border transition-all flex items-center justify-center
                   ${active
                     ? 'border-[#21BA45]/60 bg-[#21BA45]/15 ring-1 ring-[#21BA45]/30'
                     : 'border-[#2a2a2a] bg-[#141414] opacity-60 hover:opacity-90 hover:border-[#3a3a3a]'
@@ -135,7 +135,7 @@ function CharacterFilter({ selected, onToggle, onClear }: {
                 `}
               >
                 {imgPath ? (
-                  <img src={imgPath} alt={name} className="h-11 object-contain" loading="lazy" />
+                  <img src={imgPath} alt={name} className="h-8 object-contain" loading="lazy" />
                 ) : (
                   <span className="text-xs font-bold text-gray-400">{name.slice(0, 2)}</span>
                 )}
@@ -157,6 +157,8 @@ export function Discover() {
   const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
   const [visibleCount, setVisibleCount] = useState(15);
   const [confirmBlock, setConfirmBlock] = useState<string | null>(null);
+  const [addNoteModal, setAddNoteModal] = useState<string | null>(null);
+  const [addNote, setAddNote] = useState<string | null>(null);
   const [charFilter, setCharFilter] = useState<Set<number>>(new Set());
   const [search, setSearch] = useState('');
   const charFilterRef = useRef(charFilter);
@@ -183,12 +185,21 @@ export function Discover() {
     return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onVisible); };
   }, []);
 
-  async function handleAdd(connectCode: string) {
-    setAdding(connectCode);
-    const result = await window.api.addFriend(connectCode);
+  function handleAddClick(connectCode: string) {
+    setAddNote(null);
+    setAddNoteModal(connectCode);
+  }
+
+  async function handleAddConfirm() {
+    const code = addNoteModal;
+    if (!code) return;
+    setAddNoteModal(null);
+    setAdding(code);
+    const result = await window.api.addFriend(code, addNote ?? undefined);
     if (result.ok || result.mutual) {
-      setAddedMap((prev) => new Map(prev).set(connectCode, result.mutual ? 'friends' : 'pending'));
+      setAddedMap((prev) => new Map(prev).set(code, result.mutual ? 'friends' : 'pending'));
     }
+    setAddNote(null);
     setAdding(null);
   }
 
@@ -321,7 +332,7 @@ export function Discover() {
                 }}
                 onClick={() => handleCopy(p.connectCode)}
                 onBlock={() => setConfirmBlock(p.connectCode)}
-                onAdd={!state ? () => handleAdd(p.connectCode) : undefined}
+                onAdd={!state ? () => handleAddClick(p.connectCode) : undefined}
                 addState={state}
               />
             </div>
@@ -343,6 +354,47 @@ export function Discover() {
         )}
       </div>
 
+      {addNoteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setAddNoteModal(null)}>
+          <div className="rounded-2xl border border-[#2a2a2a] bg-[#141414] p-6 w-[360px] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <p className="text-sm text-white font-semibold text-center">
+              Add <span className="font-mono text-[#21BA45]">{addNoteModal}</span>
+            </p>
+            <p className="text-xs text-gray-400 text-center mt-2 leading-relaxed">
+            When adding a player, it often helps to let them know a bit more info on what you're looking for! Notes are optional.
+            </p>
+            <div className="flex flex-wrap gap-2 mt-4 justify-center">
+              {['Looking for MU practice', 'GGs from unranked', 'Same region', 'Just saying hi', 'Similar skill level'].map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => setAddNote(addNote === tag ? null : tag)}
+                  className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
+                    addNote === tag
+                      ? 'bg-[#21BA45]/20 text-[#21BA45] border border-[#21BA45]/40'
+                      : 'bg-[#1a1a1a] text-gray-400 border border-[#2a2a2a] hover:border-gray-500'
+                  }`}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={() => { setAddNote(null); setAddNoteModal(null); }}
+                className="flex-1 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-white hover:bg-[#222] transition-colors"
+              >
+                Back
+              </button>
+              <button
+                onClick={handleAddConfirm}
+                className="flex-1 rounded-lg bg-[#21BA45] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#1ea33e] transition-colors"
+              >
+                {addNote ? 'Send with note' : 'Send without note'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {confirmBlock && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setConfirmBlock(null)}>
           <div className="rounded-2xl border border-[#2a2a2a] bg-[#141414] p-6 w-[320px] shadow-2xl" onClick={(e) => e.stopPropagation()}>

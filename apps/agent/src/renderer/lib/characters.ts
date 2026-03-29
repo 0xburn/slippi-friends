@@ -14,40 +14,9 @@ export const CHARACTER_SHORT_NAMES: Record<number, string> = {
   22: 'Doc', 23: 'Roy', 24: 'Pichu', 25: 'Ganon',
 };
 
-// l7stats A#.png uses alphabetical order: A1=Bowser, A2=Falcon, A3=DK, ...
-const SLIPPI_ID_TO_ALPHA: Record<number, number> = {
-  0: 2,   // Captain Falcon
-  1: 3,   // Donkey Kong
-  2: 6,   // Fox
-  3: 16,  // Mr. Game & Watch
-  4: 10,  // Kirby
-  5: 1,   // Bowser
-  6: 11,  // Link
-  7: 12,  // Luigi
-  8: 13,  // Mario
-  9: 14,  // Marth
-  10: 15, // Mewtwo
-  11: 17, // Ness
-  12: 18, // Peach
-  13: 20, // Pikachu
-  14: 8,  // Ice Climbers
-  15: 9,  // Jigglypuff
-  16: 22, // Samus
-  17: 24, // Yoshi
-  18: 26, // Zelda
-  19: 23, // Sheik
-  20: 5,  // Falco
-  21: 25, // Young Link
-  22: 4,  // Dr. Mario
-  23: 21, // Roy
-  24: 19, // Pichu
-  25: 7,  // Ganondorf
-};
-
 export function getCharacterImagePath(id: number): string {
-  const alphaId = SLIPPI_ID_TO_ALPHA[id];
-  if (alphaId == null) return '';
-  return `./characters/A${alphaId}.png`;
+  if (CHARACTER_MAP[id] == null) return '';
+  return `./stockicons/${id}.png`;
 }
 
 export function getCharacterName(id: number): string { return CHARACTER_MAP[id] ?? 'Unknown'; }
