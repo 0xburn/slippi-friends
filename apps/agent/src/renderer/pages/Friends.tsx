@@ -67,6 +67,7 @@ export function Friends() {
   const [dcStarting, setDcStarting] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState<{ id: string; code: string } | null>(null);
   const [confirmBlock, setConfirmBlock] = useState<{ code: string } | null>(null);
+  const [pendingHidden, setPendingHidden] = useState(false);
   const [blocking, setBlocking] = useState<string | null>(null);
 
   const [myStatus, setMyStatus] = useState<'online' | 'in-game' | 'offline'>('offline');
@@ -900,10 +901,18 @@ export function Friends() {
       {/* Pending Outgoing */}
       {pendingOut.length > 0 && (
         <div className="space-y-2">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
-            Pending ({pendingOut.length})
-          </h2>
-          {pendingOut.map((f) => (
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
+              Pending ({pendingOut.length})
+            </h2>
+            <button
+              onClick={() => setPendingHidden((h) => !h)}
+              className="rounded-md border border-[#2a2a2a] bg-[#1a1a1a] px-2.5 py-0.5 text-xs font-medium text-gray-400 hover:text-white hover:border-[#3a3a3a] transition-colors"
+            >
+              {pendingHidden ? 'Show' : 'Hide'}
+            </button>
+          </div>
+          {!pendingHidden && pendingOut.map((f) => (
             <PlayerCard
               key={f.id}
               player={{
