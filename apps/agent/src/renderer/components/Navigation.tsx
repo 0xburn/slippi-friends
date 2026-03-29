@@ -100,7 +100,7 @@ export function Navigation() {
             {copied ? 'Copied!' : 'Share with a Friend!'}
           </button>
         </div>
-        <div className="px-5 py-2 text-[10px] text-gray-600">v0.2.18</div>
+        <div className="px-5 py-2 text-[10px] text-gray-600">v0.2.19</div>
       </aside>
       <main className="flex-1 overflow-y-auto">
         <div className="h-[52px] shrink-0 drag relative">
@@ -126,6 +126,19 @@ export function Navigation() {
           </div>
         </div>
         <div className="px-6 pb-6">
+          <button
+            onClick={() => window.api.openExternal('https://start.gg/fullhouse')}
+            className="mb-4 w-full rounded-xl overflow-hidden border border-[#2a5a2a]/40 bg-gradient-to-r from-[#0d1f0d] via-[#122212] to-[#0d1f0d] hover:border-[#3a7a3a]/60 transition-all group cursor-pointer"
+          >
+            <div className="flex items-center gap-4 px-5 py-2.5">
+              <img src="./siege.png" alt="Full House: Siege" className="h-10 w-10 object-contain shrink-0" />
+              <div className="flex flex-col items-start">
+                <span className="text-sm font-bold tracking-wide text-[#d4c48a]">FULL HOUSE: SIEGE</span>
+                <span className="text-xs font-semibold text-[#21BA45]">April 24 – 26, 2026</span>
+              </div>
+              <span className="ml-auto text-xs italic text-gray-500 group-hover:text-gray-300 transition-colors">The gates open soon.</span>
+            </div>
+          </button>
           {broadcast && !broadcastDismissed && (
             <div className="mb-4 rounded-xl border border-[#21BA45]/20 bg-[#21BA45]/5 px-4 py-3 flex items-center gap-3">
               <span className="text-sm">📢</span>

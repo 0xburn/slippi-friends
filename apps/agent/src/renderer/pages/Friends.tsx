@@ -70,7 +70,7 @@ export function Friends() {
   const [dcStarting, setDcStarting] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState<{ id: string; code: string } | null>(null);
   const [confirmBlock, setConfirmBlock] = useState<{ code: string } | null>(null);
-  const [pendingHidden, setPendingHidden] = useState(false);
+  const [pendingHidden, setPendingHidden] = useState(() => localStorage.getItem('pendingHidden') === '1');
   const [blocking, setBlocking] = useState<string | null>(null);
 
   const [myStatus, setMyStatus] = useState<'online' | 'in-game' | 'offline'>('offline');
@@ -943,7 +943,7 @@ export function Friends() {
               )}
             </div>
             <button
-              onClick={() => setPendingHidden((h) => !h)}
+              onClick={() => setPendingHidden((h) => { const next = !h; localStorage.setItem('pendingHidden', next ? '1' : '0'); return next; })}
               className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
                 pendingHidden
                   ? 'border border-[#21BA45]/30 bg-[#21BA45]/10 text-[#21BA45] hover:bg-[#21BA45]/20'
