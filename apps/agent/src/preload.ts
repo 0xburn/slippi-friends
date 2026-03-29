@@ -67,8 +67,8 @@ const api = {
 
   getSettings: () => ipcRenderer.invoke('settings:get'),
   updateSettings: (partial: Record<string, any>) => ipcRenderer.invoke('settings:update', partial),
-  getPrivacy: () => ipcRenderer.invoke('privacy:get') as Promise<{ hideRegion: boolean; hideDiscordUnlessFriends: boolean; hideAvatar: boolean; hideConnectionType: boolean; hideOnlineStatus: boolean }>,
-  updatePrivacy: (partial: { hideRegion?: boolean; hideDiscordUnlessFriends?: boolean; hideAvatar?: boolean; hideConnectionType?: boolean; hideOnlineStatus?: boolean }) => ipcRenderer.invoke('privacy:update', partial),
+  getPrivacy: () => ipcRenderer.invoke('privacy:get') as Promise<{ hideRegion: boolean; hideDiscordUnlessFriends: boolean; hideAvatar: boolean; hideConnectionType: boolean; hideOnlineStatus: boolean; disableFriendRequests: boolean }>,
+  updatePrivacy: (partial: { hideRegion?: boolean; hideDiscordUnlessFriends?: boolean; hideAvatar?: boolean; hideConnectionType?: boolean; hideOnlineStatus?: boolean; disableFriendRequests?: boolean }) => ipcRenderer.invoke('privacy:update', partial),
   updateCharacters: (data: { mainCharacter?: number | null; secondaryCharacter?: number | null }) => ipcRenderer.invoke('profile:updateCharacters', data) as Promise<{ ok?: boolean; error?: string }>,
   browseDirectory: () => ipcRenderer.invoke('settings:browse'),
   isSetupComplete: () => ipcRenderer.invoke('setup:isComplete'),

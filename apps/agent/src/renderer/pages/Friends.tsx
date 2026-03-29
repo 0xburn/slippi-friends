@@ -96,6 +96,7 @@ export function Friends() {
   const [statusPickerOpen, setStatusPickerOpen] = useState(false);
   const [disableStatuses, setDisableStatuses] = useState(false);
   const [disableNudges, setDisableNudges] = useState(false);
+  const [disableFriendRequests, setDisableFriendRequests] = useState(false);
   const [visibleCount, setVisibleCount] = useState(15);
 
   const [nudgeSent, setNudgeSent] = useState<Record<string, string>>({});
@@ -140,6 +141,7 @@ export function Friends() {
       setHideAvatar(p.hideAvatar);
       setHideConnectionType(p.hideConnectionType);
       setHideOnlineStatus(p.hideOnlineStatus);
+      setDisableFriendRequests(p.disableFriendRequests ?? false);
     }).catch(() => {});
     window.api.getConnectionType().then(setMyConnectionType).catch(() => {});
 
@@ -421,6 +423,12 @@ export function Friends() {
     await window.api.copyToClipboard(code);
   }
 
+  async function handleToggleFriendRequests() {
+    const next = !disableFriendRequests;
+    setDisableFriendRequests(next);
+    await window.api.updatePrivacy({ disableFriendRequests: next });
+  }
+
   async function handleToggleLfg() {
     setLfgToggling(true);
     try {
@@ -635,6 +643,17 @@ export function Friends() {
                 }`}
               >
                 {lfg ? '🎮' : '🎮 Looking to play?'}
+              </button>
+              <button
+                onClick={handleToggleFriendRequests}
+                title={disableFriendRequests ? 'Friend requests disabled' : 'Friend requests enabled'}
+                className={`rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all ${
+                  disableFriendRequests
+                    ? 'bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25'
+                    : 'border border-[#2a2a2a] bg-[#1a1a1a] text-gray-400 hover:text-white hover:bg-[#222]'
+                }`}
+              >
+                {disableFriendRequests ? '🚫 Requests off' : '✉️ Requests on'}
               </button>
             </div>
           </div>
@@ -891,6 +910,13 @@ export function Friends() {
                   className="rounded-lg bg-red-500/10 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50"
                 >
                   Decline
+                </button>
+                <button
+                  onClick={() => setConfirmBlock({ code: req.connectCode })}
+                  disabled={blocking === req.connectCode}
+                  className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] px-2.5 py-1.5 text-xs text-gray-500 hover:text-red-400 hover:border-red-500/30 transition-colors disabled:opacity-50"
+                >
+                  {blocking === req.connectCode ? '...' : 'Block'}
                 </button>
               </div>
             </div>

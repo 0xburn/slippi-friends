@@ -304,9 +304,13 @@ export function registerIpcHandlers(
 
       const { data: target } = await supabase
         .from('profiles')
-        .select('id, connect_code')
+        .select('id, connect_code, disable_friend_requests')
         .eq('connect_code', connectCode)
         .single();
+
+      if (target?.disable_friend_requests) {
+        return { error: 'This player has disabled friend requests' };
+      }
 
       if (target) {
         const myCode = (await supabase.from('profiles').select('connect_code').eq('id', user.id).single()).data?.connect_code || '';
@@ -1071,8 +1075,8 @@ export function registerIpcHandlers(
   ipcMain.handle('privacy:get', async () => {
     try {
       const user = await getCurrentUser();
-      if (!user) return { hideRegion: false, hideDiscordUnlessFriends: false, hideAvatar: false, hideConnectionType: false, hideOnlineStatus: false };
-      const { data } = await supabase.from('profiles').select('hide_region, hide_discord_unless_friends, hide_avatar, hide_connection_type, show_online_status').eq('id', user.id).single();
+      if (!user) return { hideRegion: false, hideDiscordUnlessFriends: false, hideAvatar: false, hideConnectionType: false, hideOnlineStatus: false, disableFriendRequests: false };
+      const { data } = await supabase.from('profiles').select('hide_region, hide_discord_unless_friends, hide_avatar, hide_connection_type, show_online_status, disable_friend_requests').eq('id', user.id).single();
       const hideConn = data?.hide_connection_type ?? false;
       const hideOnline = !(data?.show_online_status ?? true);
       setHideConnectionType(hideConn);
@@ -1083,11 +1087,12 @@ export function registerIpcHandlers(
         hideAvatar: data?.hide_avatar ?? false,
         hideConnectionType: hideConn,
         hideOnlineStatus: hideOnline,
+        disableFriendRequests: data?.disable_friend_requests ?? false,
       };
-    } catch { return { hideRegion: false, hideDiscordUnlessFriends: false, hideAvatar: false, hideConnectionType: false, hideOnlineStatus: false }; }
+    } catch { return { hideRegion: false, hideDiscordUnlessFriends: false, hideAvatar: false, hideConnectionType: false, hideOnlineStatus: false, disableFriendRequests: false }; }
   });
 
-  ipcMain.handle('privacy:update', async (_e, partial: { hideRegion?: boolean; hideDiscordUnlessFriends?: boolean; hideAvatar?: boolean; hideConnectionType?: boolean; hideOnlineStatus?: boolean }) => {
+  ipcMain.handle('privacy:update', async (_e, partial: { hideRegion?: boolean; hideDiscordUnlessFriends?: boolean; hideAvatar?: boolean; hideConnectionType?: boolean; hideOnlineStatus?: boolean; disableFriendRequests?: boolean }) => {
     try {
       const user = await getCurrentUser();
       if (!user) return { error: 'Not authenticated' };
@@ -1103,6 +1108,7 @@ export function registerIpcHandlers(
         update.show_online_status = !partial.hideOnlineStatus;
         setHideOnlineStatus(partial.hideOnlineStatus);
       }
+      if (partial.disableFriendRequests !== undefined) update.disable_friend_requests = partial.disableFriendRequests;
       const { error } = await supabase.from('profiles').update(update).eq('id', user.id);
       if (error) return { error: error.message };
       return { ok: true };

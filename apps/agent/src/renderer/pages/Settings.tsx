@@ -50,7 +50,7 @@ export function Settings() {
     disableStatuses: false,
   });
   const [metrics, setMetrics] = useState<AppMetric[] | null>(null);
-  const [privacy, setPrivacy] = useState({ hideRegion: false, hideDiscordUnlessFriends: false, hideAvatar: false, hideConnectionType: false, hideOnlineStatus: false });
+  const [privacy, setPrivacy] = useState({ hideRegion: false, hideDiscordUnlessFriends: false, hideAvatar: false, hideConnectionType: false, hideOnlineStatus: false, disableFriendRequests: false });
   const [saved, setSaved] = useState(false);
   const [updateMsg, setUpdateMsg] = useState<string | null>(null);
   const [blockedUsers, setBlockedUsers] = useState<{ connectCode: string; displayName: string | null; avatarUrl: string | null; blockedAt: string }[]>([]);
@@ -272,6 +272,13 @@ export function Settings() {
           <p className="text-xs text-gray-500 mt-0.5">Control what other players can see about you</p>
         </div>
         <ToggleRow
+          label="Disable Friend Requests"
+          description="Block all incoming friend requests from other players"
+          checked={privacy.disableFriendRequests}
+          onChange={() => togglePrivacy('disableFriendRequests')}
+          indent
+        />
+        <ToggleRow
           label="Hide Online Status"
           description="Appear offline to all other players"
           checked={privacy.hideOnlineStatus}
@@ -466,7 +473,7 @@ export function Settings() {
       })()}
 
       <p className="text-center text-xs text-gray-600">
-      friendlies v0.2.15
+      friendlies v0.2.16
       </p>
     </div>
   );
