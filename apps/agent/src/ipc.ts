@@ -607,8 +607,7 @@ export function registerIpcHandlers(
         .from('play_invites')
         .select('id')
         .eq('sender_id', user.id)
-        .eq('status', 'pending')
-        .gte('created_at', cutoff);
+        .eq('status', 'pending');
       if (allSent && allSent.length >= MAX_OUTGOING) {
         return { error: `Max ${MAX_OUTGOING} outgoing invites` };
       }
@@ -636,12 +635,10 @@ export function registerIpcHandlers(
       const user = await getCurrentUser();
       if (!user) return [];
 
-      const cutoff = new Date(Date.now() - INVITE_COOLDOWN_MS).toISOString();
       const { data } = await supabase
         .from('play_invites')
         .select('id, sender_id, created_at, status, receiver_opened')
         .eq('receiver_id', user.id)
-        .gte('created_at', cutoff)
         .order('created_at', { ascending: false });
       if (!data || data.length === 0) return [];
 
@@ -743,12 +740,10 @@ export function registerIpcHandlers(
       const user = await getCurrentUser();
       if (!user) return [];
 
-      const cutoff = new Date(Date.now() - INVITE_COOLDOWN_MS).toISOString();
       const { data } = await supabase
         .from('play_invites')
         .select('id, receiver_id, created_at, status, sender_opened')
         .eq('sender_id', user.id)
-        .gte('created_at', cutoff)
         .order('created_at', { ascending: false });
       if (!data || data.length === 0) return [];
 
