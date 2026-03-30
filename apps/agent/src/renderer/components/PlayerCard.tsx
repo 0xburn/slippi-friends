@@ -147,7 +147,7 @@ export function PlayerCard({ player, showStatus = true, expandable = true, onCli
           inviteState === true ? (
             <span className="text-[10px] font-medium text-[#21BA45] shrink-0 px-1">Sent!</span>
           ) : typeof inviteState === 'string' ? (
-            <span className="text-[10px] font-medium text-yellow-500 shrink-0 px-1 max-w-[80px] truncate">{inviteState}</span>
+            <span className="text-[10px] font-medium text-yellow-500 shrink-0 px-1 max-w-[140px] truncate" title={inviteState}>{inviteState}</span>
           ) : (
             <button
               onClick={(e) => { e.stopPropagation(); onInvite(); }}

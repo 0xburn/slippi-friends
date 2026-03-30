@@ -591,25 +591,26 @@ export function registerIpcHandlers(
 
       const cutoff = new Date(Date.now() - INVITE_COOLDOWN_MS).toISOString();
 
-      // Only allow one active invite at a time (sent or received)
-      const { data: activeSent } = await supabase
+      const { data: existing } = await supabase
         .from('play_invites')
         .select('id')
         .eq('sender_id', user.id)
+        .eq('receiver_id', target.id)
         .gte('created_at', cutoff)
         .limit(1);
-      if (activeSent && activeSent.length > 0) {
-        return { error: 'You already have an active invite' };
+      if (existing && existing.length > 0) {
+        return { error: 'Invite already sent to this player' };
       }
 
-      const { data: activeReceived } = await supabase
+      const MAX_OUTGOING = 5;
+      const { data: allSent } = await supabase
         .from('play_invites')
         .select('id')
-        .eq('receiver_id', user.id)
-        .gte('created_at', cutoff)
-        .limit(1);
-      if (activeReceived && activeReceived.length > 0) {
-        return { error: 'You already have an active invite' };
+        .eq('sender_id', user.id)
+        .eq('status', 'pending')
+        .gte('created_at', cutoff);
+      if (allSent && allSent.length >= MAX_OUTGOING) {
+        return { error: `Max ${MAX_OUTGOING} outgoing invites` };
       }
 
       const { error } = await supabase
@@ -724,6 +725,13 @@ export function registerIpcHandlers(
           .eq('id', inviteId);
         await logEvent(user.id, 'invite_opened_melee', { invite_id: inviteId });
       }
+
+      await supabase
+        .from('play_invites')
+        .delete()
+        .eq('sender_id', user.id)
+        .eq('status', 'pending')
+        .neq('id', inviteId);
 
       return { ok: true };
     } catch (e: any) { return { error: e.message }; }

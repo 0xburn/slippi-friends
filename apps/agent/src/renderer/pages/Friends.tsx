@@ -1144,7 +1144,7 @@ export function Friends() {
               onBlock={() => setConfirmBlock({ code: f.connectCode })}
               onRemove={() => setConfirmRemove({ id: f.id, code: f.connectCode })}
               onInvite={() => handleInvite(f.connectCode)}
-              inviteDisabled={inviting === f.connectCode || hasActiveInvites}
+              inviteDisabled={inviting === f.connectCode || !!inviteSent[f.connectCode]}
               inviteState={invState ?? null}
               nudgeOptions={disableNudges ? undefined : NUDGE_OPTIONS}
               onNudge={disableNudges ? undefined : (msg) => handleNudge(f.connectCode, msg)}
