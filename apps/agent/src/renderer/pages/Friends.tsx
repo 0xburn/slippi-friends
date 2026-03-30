@@ -534,8 +534,8 @@ export function Friends() {
 
   // DC admin gate removed — feature well tested
   // const isDirectConnectUser = myIdentity?.connectCode === 'SMOK#1' || myIdentity?.connectCode === 'BF#0';
-  const visibleSentInvites = sentInvites.filter((inv) => !inv.myOpened || inv.status === 'pending' || inv.status === 'accepted');
-  const visiblePlayInvites = playInvites.filter((inv) => !inv.myOpened || inv.status === 'pending' || inv.status === 'accepted');
+  const visibleSentInvites = sentInvites.filter((inv) => !inv.myOpened || inv.status === 'pending');
+  const visiblePlayInvites = playInvites.filter((inv) => !inv.myOpened || inv.status === 'pending');
   const hasActiveInvites = sentInvites.length > 0 || playInvites.length > 0;
 
   useEffect(() => {
