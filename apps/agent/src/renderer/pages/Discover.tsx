@@ -188,7 +188,7 @@ export function Discover() {
   async function loadSentInvites() {
     try {
       const data = await window.api.getSentInvites();
-      setSentInvites((data || []).filter((d: any) => !d.sender_opened).slice(0, 10).map((d: any) => ({
+      setSentInvites((data || []).filter((d: any) => !d.sender_opened || d.status === 'pending' || d.status === 'accepted').slice(0, 10).map((d: any) => ({
         id: d.id,
         connectCode: d.connectCode || '',
         displayName: d.displayName,
@@ -203,7 +203,7 @@ export function Discover() {
   async function loadPlayInvites() {
     try {
       const data = await window.api.getPendingInvites();
-      setPlayInvites((data || []).filter((d: any) => !d.receiver_opened).slice(0, 10).map((d: any) => ({
+      setPlayInvites((data || []).filter((d: any) => !d.receiver_opened || d.status === 'pending' || d.status === 'accepted').slice(0, 10).map((d: any) => ({
         id: d.id,
         connectCode: d.connectCode || '',
         displayName: d.displayName,

@@ -468,6 +468,8 @@ export function registerIpcHandlers(
           receiver_id: target.id,
           created_at: new Date().toISOString(),
           status: 'pending',
+          sender_opened: false,
+          receiver_opened: false,
         }, { onConflict: 'sender_id,receiver_id' });
 
       if (error) return { error: error.message };

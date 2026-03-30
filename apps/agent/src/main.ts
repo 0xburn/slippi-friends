@@ -244,7 +244,7 @@ async function pollPlayInvites(userId: string): Promise<void> {
     const blockedIds = new Set((blockedRows || []).map((b: any) => b.blocked_user_id).filter(Boolean));
     const blockedCodes = new Set((blockedRows || []).map((b: any) => b.blocked_connect_code).filter(Boolean));
 
-    const newInvites = invites.filter((inv) => !knownPlayInviteIds.has(inv.id));
+    const newInvites = invites.filter((inv) => !knownPlayInviteIds.has(`${inv.id}:${inv.created_at}`));
     if (newInvites.length === 0) return;
 
     const senderIds = newInvites.map((inv) => inv.sender_id);
@@ -255,19 +255,23 @@ async function pollPlayInvites(userId: string): Promise<void> {
     const profileMap: Record<string, string> = {};
     (profiles || []).forEach((p: any) => { profileMap[p.id] = p.connect_code; });
 
+    let didNotify = false;
     for (const inv of newInvites) {
-      knownPlayInviteIds.add(inv.id);
+      knownPlayInviteIds.add(`${inv.id}:${inv.created_at}`);
       const fromCode = profileMap[inv.sender_id];
       if (!fromCode) continue;
       if (blockedIds.has(inv.sender_id) || blockedCodes.has(fromCode)) continue;
       if (serviceStartedAt && inv.created_at < serviceStartedAt) continue;
+      didNotify = true;
       showPlayInviteNotification(fromCode, () => {
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.show();
           mainWindow.focus();
-          sendToRenderer('invites:refresh', {});
         }
       });
+    }
+    if (didNotify) {
+      sendToRenderer('invites:refresh', {});
     }
   } catch (e) { console.error('[main] play invite poll failed', e); }
 }
