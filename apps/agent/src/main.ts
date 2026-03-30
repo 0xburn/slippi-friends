@@ -61,30 +61,57 @@ function loadDotEnvFromAppDir(): void {
 async function fetchGeoWithFallback(): Promise<{ lat: number; lon: number; region: string } | null> {
   const timeout = (ms: number) => new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), ms));
 
-  // Primary: ipwho.is (HTTPS, free, no key)
-  try {
-    const res = await Promise.race([fetch('https://ipwho.is/'), timeout(5000)]);
-    if (res.ok) {
-      const d = await res.json();
-      if (d.success !== false && typeof d.latitude === 'number' && typeof d.longitude === 'number') {
-        return { lat: d.latitude, lon: d.longitude, region: [d.region, d.country].filter(Boolean).join(', ') || '' };
-      }
-    }
-  } catch { /* try fallback */ }
+  type GeoResult = { lat: number; lon: number; region: string };
+  const results: GeoResult[] = [];
 
-  // Fallback: freeipapi.com (HTTPS, free, no key)
-  try {
-    const res = await Promise.race([fetch('https://freeipapi.com/api/json'), timeout(5000)]);
-    if (res.ok) {
-      const d = await res.json();
-      if (typeof d.latitude === 'number' && typeof d.longitude === 'number') {
-        return { lat: d.latitude, lon: d.longitude, region: [d.regionName, d.countryName].filter(Boolean).join(', ') || '' };
-      }
-    }
-  } catch { /* all failed */ }
+  const providers: Array<{ name: string; url: string; parse: (d: any) => GeoResult | null }> = [
+    {
+      name: 'ip-api.com',
+      url: 'http://ip-api.com/json/?fields=status,lat,lon,regionName,country',
+      parse: (d) => d.status === 'success' && typeof d.lat === 'number'
+        ? { lat: d.lat, lon: d.lon, region: [d.regionName, d.country].filter(Boolean).join(', ') }
+        : null,
+    },
+    {
+      name: 'ipwho.is',
+      url: 'https://ipwho.is/',
+      parse: (d) => d.success !== false && typeof d.latitude === 'number'
+        ? { lat: d.latitude, lon: d.longitude, region: [d.region, d.country].filter(Boolean).join(', ') }
+        : null,
+    },
+    {
+      name: 'freeipapi.com',
+      url: 'https://freeipapi.com/api/json',
+      parse: (d) => typeof d.latitude === 'number'
+        ? { lat: d.latitude, lon: d.longitude, region: [d.regionName, d.countryName].filter(Boolean).join(', ') }
+        : null,
+    },
+  ];
 
-  console.warn('[main] all geolocation services failed');
-  return null;
+  await Promise.allSettled(providers.map(async (p) => {
+    try {
+      const res = await Promise.race([fetch(p.url), timeout(4000)]);
+      if (!res.ok) return;
+      const parsed = p.parse(await res.json());
+      if (parsed) results.push(parsed);
+    } catch { /* provider failed */ }
+  }));
+
+  if (results.length === 0) {
+    console.warn('[main] all geolocation services failed');
+    return null;
+  }
+
+  if (results.length === 1) return results[0];
+
+  // Use median lat/lon from all successful providers for best accuracy
+  const sorted = (arr: number[]) => [...arr].sort((a, b) => a - b);
+  const median = (arr: number[]) => { const s = sorted(arr); const m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+  return {
+    lat: median(results.map((r) => r.lat)),
+    lon: median(results.map((r) => r.lon)),
+    region: results[0].region,
+  };
 }
 
 function findProtocolUrl(argv: string[]): string | null {

@@ -50,7 +50,7 @@ export function Settings() {
     disableStatuses: false,
   });
   const [metrics, setMetrics] = useState<AppMetric[] | null>(null);
-  const [privacy, setPrivacy] = useState({ hideRegion: false, hideDiscordUnlessFriends: false, hideAvatar: false, hideConnectionType: false, hideOnlineStatus: false, disableFriendRequests: false });
+  const [privacy, setPrivacy] = useState({ hideRegion: false, hideDiscordUnlessFriends: false, hideAvatar: false, hideConnectionType: false, hideOnlineStatus: false, disableFriendRequests: false, chosenRegion: null as string | null });
   const [saved, setSaved] = useState(false);
   const [updateMsg, setUpdateMsg] = useState<string | null>(null);
   const [blockedUsers, setBlockedUsers] = useState<{ connectCode: string; displayName: string | null; avatarUrl: string | null; blockedAt: string }[]>([]);
@@ -292,6 +292,35 @@ export function Settings() {
           onChange={() => togglePrivacy('hideRegion')}
           indent
         />
+        {!privacy.hideRegion && (
+          <div className="flex items-center justify-between px-5 py-3 pl-10">
+            <div>
+              <p className="text-sm text-gray-300">Display Region</p>
+              <p className="text-xs text-gray-500">Override the auto-detected region shown on your profile</p>
+            </div>
+            <select
+              className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-[#555] min-w-[180px]"
+              value={privacy.chosenRegion || ''}
+              onChange={async (e) => {
+                const val = e.target.value || null;
+                setPrivacy((s) => ({ ...s, chosenRegion: val }));
+                await window.api.setRegion(val);
+                flash();
+              }}
+            >
+              <option value="">Auto-detect</option>
+              <optgroup label="North America">
+                {['MDVA','Tristate','New England','Florida','NorCal','Central Cal','SoCal','Pacific Northwest','Midwest','Southwest','South','Canada','Mexico'].map((s) => <option key={s} value={s}>{s}</option>)}
+              </optgroup>
+              <optgroup label="Europe">
+                {['UK','Ireland','Germany','Sweden','France','Netherlands','Norway','Spain','EU'].map((s) => <option key={s} value={s}>{s}</option>)}
+              </optgroup>
+              <optgroup label="Asia">
+                {['Japan'].map((s) => <option key={s} value={s}>{s}</option>)}
+              </optgroup>
+            </select>
+          </div>
+        )}
         <ToggleRow
           label="Hide Discord from Non-Friends"
           description="Only show your Discord username to accepted friends"
@@ -473,7 +502,7 @@ export function Settings() {
       })()}
 
       <p className="text-center text-xs text-gray-600">
-      friendlies v0.2.32
+      friendlies v0.2.33
       </p>
     </div>
   );

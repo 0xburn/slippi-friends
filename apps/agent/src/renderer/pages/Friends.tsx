@@ -81,6 +81,7 @@ export function Friends() {
   const [confirmRemove, setConfirmRemove] = useState<{ id: string; code: string } | null>(null);
   const [confirmBlock, setConfirmBlock] = useState<{ code: string } | null>(null);
   const [pendingHidden, setPendingHidden] = useState(() => localStorage.getItem('pendingHidden') === '1');
+  const [incomingHidden, setIncomingHidden] = useState(() => localStorage.getItem('incomingHidden') === '1');
   const [blocking, setBlocking] = useState<string | null>(null);
 
   const [myStatus, setMyStatus] = useState<'online' | 'in-game' | 'offline'>('offline');
@@ -269,6 +270,8 @@ export function Friends() {
         connectCode: d.connectCode || '',
         displayName: d.displayName,
         discordUsername: d.discordUsername,
+        avatarUrl: d.avatarUrl ?? null,
+        rating: d.rating ?? null,
         created_at: d.created_at,
         status: d.status || 'pending',
         myOpened: !!d.receiver_opened,
@@ -288,6 +291,8 @@ export function Friends() {
         connectCode: d.connectCode || '',
         displayName: d.displayName,
         discordUsername: d.discordUsername,
+        avatarUrl: d.avatarUrl ?? null,
+        rating: d.rating ?? null,
         created_at: d.created_at,
         status: d.status || 'pending',
         myOpened: !!d.sender_opened,
@@ -593,34 +598,42 @@ export function Friends() {
                   playingSince={hideOnlineStatus ? null : myPlayingSince}
                 />
               </div>
-              <div className="flex items-center gap-2 mt-0.5">
-                {myIdentity.displayName && (
-                  <span className="text-xs text-gray-500">{myIdentity.displayName}</span>
-                )}
-                {myProfile?.discord_username && (
-                  <button
-                    onClick={() => { if (myProfile?.discord_id) window.api.openDiscordProfile(myProfile.discord_id); }}
-                    className={`inline-flex items-center gap-1 min-w-0 rounded-md bg-[#5865F2]/10 px-1.5 py-0.5 transition-colors ${
-                      myProfile?.discord_id ? 'hover:bg-[#5865F2]/25 cursor-pointer' : 'cursor-default'
-                    }`}
-                    title={myProfile?.discord_id ? 'Open in Discord' : undefined}
-                  >
-                    <DiscordIcon className="w-3.5 h-3.5 text-[#5865F2] shrink-0" />
-                    <span className="text-xs font-medium text-[#5865F2] truncate">@{myProfile.discord_username}</span>
-                  </button>
-                )}
-                {myConnectionType && !hideConnectionType && (
-                  <ConnectionTypeIcon type={myConnectionType} />
-                )}
-                {myProfile?.region && !hideRegion && (
-                  <span className="text-[10px] text-gray-600">{myProfile.region}</span>
-                )}
-                {myProfile?.rating_ordinal && (
-                  <RankBadge rating={myProfile.rating_ordinal} />
-                )}
-                {total > 0 && (
-                  <span className="text-xs text-gray-600">{wins}W {losses}L</span>
-                )}
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 mt-1">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  {myIdentity.displayName && (
+                    <span className="text-xs text-gray-500 truncate">{myIdentity.displayName}</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  {myProfile?.region && !hideRegion && (
+                    <span className="text-[10px] text-gray-600">{myProfile.region}</span>
+                  )}
+                  {myConnectionType && !hideConnectionType && (
+                    <ConnectionTypeIcon type={myConnectionType} />
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  {myProfile?.discord_username && (
+                    <button
+                      onClick={() => { if (myProfile?.discord_id) window.api.openDiscordProfile(myProfile.discord_id); }}
+                      className={`inline-flex items-center gap-1 min-w-0 rounded-md bg-[#5865F2]/10 px-1.5 py-0.5 transition-colors ${
+                        myProfile?.discord_id ? 'hover:bg-[#5865F2]/25 cursor-pointer' : 'cursor-default'
+                      }`}
+                      title={myProfile?.discord_id ? 'Open in Discord' : undefined}
+                    >
+                      <DiscordIcon className="w-3.5 h-3.5 text-[#5865F2] shrink-0" />
+                      <span className="text-xs font-medium text-[#5865F2] truncate">@{myProfile.discord_username}</span>
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  {myProfile?.rating_ordinal && (
+                    <RankBadge rating={myProfile.rating_ordinal} />
+                  )}
+                  {total > 0 && (
+                    <span className="text-xs text-gray-600">{wins}W {losses}L</span>
+                  )}
+                </div>
               </div>
             </div>
             <div className="shrink-0 flex items-center gap-2 relative">
@@ -952,10 +965,27 @@ export function Friends() {
       {/* Incoming Requests */}
       {incoming.length > 0 && (
         <div className="space-y-2">
-          <h2 className="text-sm font-semibold text-yellow-500/80 uppercase tracking-wider">
-            Incoming Requests ({incoming.length})
-          </h2>
-          {incoming.map((req) => (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <h2 className="text-sm font-semibold text-yellow-500/80 uppercase tracking-wider">
+                Incoming Requests ({incoming.length})
+              </h2>
+              {!incomingHidden && (
+                <span className="text-[11px] text-gray-600 italic">Tip: you can collapse these!</span>
+              )}
+            </div>
+            <button
+              onClick={() => setIncomingHidden((h) => { const next = !h; localStorage.setItem('incomingHidden', next ? '1' : '0'); return next; })}
+              className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                incomingHidden
+                  ? 'border border-yellow-500/30 bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20'
+                  : 'border border-[#2a2a2a] bg-[#1a1a1a] text-gray-400 hover:text-white hover:border-[#3a3a3a]'
+              }`}
+            >
+              {incomingHidden ? `Show (${incoming.length})` : 'Hide'}
+            </button>
+          </div>
+          {!incomingHidden && incoming.map((req) => (
             <div key={req.id} className="flex items-center gap-3 rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-3">
               {req.avatarUrl ? (
                 <img src={req.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover shrink-0 border border-yellow-500/20" />
