@@ -149,16 +149,22 @@ serve(async (req) => {
       const currentLosses = ranked?.losses ?? 0;
 
       const history: any[] = user.rankedNetplayProfileHistory ?? [];
-      const peakPastRating = history
+      const completedSeasons = history
         .filter((p: any) => p.season?.status !== 'active' && p.ratingOrdinal != null)
-        .reduce((max: number | null, p: any) =>
-          max == null || p.ratingOrdinal > max ? p.ratingOrdinal : max, null);
+        .sort((a: any, b: any) => {
+          const aId = parseInt(a.season?.id ?? '0', 10);
+          const bId = parseInt(b.season?.id ?? '0', 10);
+          return bId - aId;
+        });
+      const peakPastRating = completedSeasons.reduce(
+        (max: number | null, p: any) => max == null || p.ratingOrdinal > max ? p.ratingOrdinal : max, null);
+      const lastSeasonRating = completedSeasons.length > 0 ? completedSeasons[0].ratingOrdinal : null;
 
       let effectiveRating: number | null;
       if (currentWins + currentLosses > 0) {
         effectiveRating = currentRating;
-      } else if (peakPastRating != null) {
-        effectiveRating = peakPastRating;
+      } else if (lastSeasonRating != null) {
+        effectiveRating = lastSeasonRating;
       } else {
         effectiveRating = null;
       }

@@ -6,7 +6,7 @@ const config: Config = {
     extend: {
       colors: {
         slippi: { green: '#21BA45', dark: '#0a0a0a', darker: '#050505', card: '#141414', border: '#2a2a2a' },
-        rank: { bronze: '#CD7F32', silver: '#C0C0C0', gold: '#FFD700', platinum: '#00CED1', diamond: '#4169E1', master: '#8B008B' },
+        rank: { bronze: '#E06A36', silver: '#B5A5B7', gold: '#F6A51E', platinum: '#91E8E0', diamond: '#4169E1', master: '#8B008B' },
       },
       fontFamily: {
         display: ['Chakra Petch', 'sans-serif'],

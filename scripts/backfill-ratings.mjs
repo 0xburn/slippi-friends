@@ -64,13 +64,20 @@ async function fetchSlippiRating(connectCode) {
     const currentLosses = ranked?.losses ?? 0;
 
     const history = user.rankedNetplayProfileHistory ?? [];
-    const peakPastRating = history
+    const completedSeasons = history
       .filter((p) => p.season?.status !== 'active' && p.ratingOrdinal != null)
-      .reduce((max, p) => (max == null || p.ratingOrdinal > max ? p.ratingOrdinal : max), null);
+      .sort((a, b) => {
+        const aId = parseInt(a.season?.id ?? '0', 10);
+        const bId = parseInt(b.season?.id ?? '0', 10);
+        return bId - aId;
+      });
+    const peakPastRating = completedSeasons.reduce(
+      (max, p) => (max == null || p.ratingOrdinal > max ? p.ratingOrdinal : max), null);
+    const lastSeasonRating = completedSeasons.length > 0 ? completedSeasons[0].ratingOrdinal : null;
 
     let effectiveRating;
     if (currentWins + currentLosses > 0) effectiveRating = currentRating;
-    else if (peakPastRating != null) effectiveRating = peakPastRating;
+    else if (lastSeasonRating != null) effectiveRating = lastSeasonRating;
     else effectiveRating = null;
 
     const seasons = history.map((p) => ({

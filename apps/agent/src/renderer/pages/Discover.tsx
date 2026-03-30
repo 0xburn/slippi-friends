@@ -49,12 +49,12 @@ function SkeletonCard() {
 }
 
 const RANK_TIERS = [
-  { name: 'Bronze', min: 0, max: 1054.86, color: '#CD7F32' },
-  { name: 'Silver', min: 1054.87, max: 1435.51, color: '#C0C0C0' },
-  { name: 'Gold', min: 1435.52, max: 1751.93, color: '#FFD700' },
-  { name: 'Platinum', min: 1751.94, max: 2003.21, color: '#00CED1' },
-  { name: 'Diamond', min: 2003.22, max: 2274.99, color: '#4169E1' },
-  { name: 'Master', min: 2275, max: 99999, color: '#8B008B' },
+  { name: 'Bronze',   min: 0,       max: 1054.86, color: '#E06A36' },
+  { name: 'Silver',   min: 1054.87, max: 1435.47, color: '#B5A5B7' },
+  { name: 'Gold',     min: 1435.48, max: 1751.82, color: '#F6A51E' },
+  { name: 'Platinum', min: 1751.83, max: 2003.91, color: '#91E8E0' },
+  { name: 'Diamond',  min: 2003.92, max: 2191.74, color: '#4169E1' },
+  { name: 'Master',   min: 2191.75, max: 99999,   color: '#8B008B' },
 ] as const;
 
 function EloFilter({ selected, onToggle, onClear }: {

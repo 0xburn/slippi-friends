@@ -78,16 +78,22 @@ async function fetchSlippiRating(connectCode: string): Promise<RatingCacheEntry 
     const currentLosses: number = ranked?.losses ?? 0;
 
     const history: any[] = user.rankedNetplayProfileHistory ?? [];
-    const peakPastRating = history
+    const completedSeasons = history
       .filter((p: any) => p.season?.status !== 'active' && p.ratingOrdinal != null)
-      .reduce((max: number | null, p: any) =>
-        max == null || p.ratingOrdinal > max ? p.ratingOrdinal : max, null);
+      .sort((a: any, b: any) => {
+        const aId = parseInt(a.season?.id ?? '0', 10);
+        const bId = parseInt(b.season?.id ?? '0', 10);
+        return bId - aId;
+      });
+    const peakPastRating = completedSeasons.reduce(
+      (max: number | null, p: any) => max == null || p.ratingOrdinal > max ? p.ratingOrdinal : max, null);
+    const lastSeasonRating = completedSeasons.length > 0 ? completedSeasons[0].ratingOrdinal : null;
 
     let effectiveRating: number | null;
     if (currentWins + currentLosses > 0) {
       effectiveRating = currentRating;
-    } else if (peakPastRating != null) {
-      effectiveRating = peakPastRating;
+    } else if (lastSeasonRating != null) {
+      effectiveRating = lastSeasonRating;
     } else {
       effectiveRating = null;
     }
@@ -296,18 +302,17 @@ export function registerIpcHandlers(
         .map((f: any) => (f.profiles as any)?.connect_code || f.friend_connect_code)
         .filter(Boolean);
 
-      // DEPRECATED: slippi_cache — use player_ratings instead
-      let cacheMap: Record<string, any> = {};
+      let ratingsMap: Record<string, any> = {};
       if (codes.length > 0) {
-        const { data: cached } = await supabase.from('slippi_cache').select('*').in('connect_code', codes);
-        if (cached) cached.forEach((c: any) => { cacheMap[c.connect_code] = c; });
+        const { data: ratings } = await supabase.from('player_ratings').select('connect_code, effective_rating').in('connect_code', codes);
+        if (ratings) ratings.forEach((r: any) => { ratingsMap[r.connect_code] = r; });
       }
       const t3 = performance.now();
 
       const result = data.map((f: any) => {
         const p = f.profiles as any;
         const code = p?.connect_code || f.friend_connect_code;
-        const c = cacheMap[code] || {};
+        const rEntry = ratingsMap[code];
         const isAccepted = f.status === 'accepted';
         const showDiscord = isAccepted || !p?.hide_discord_unless_friends;
         const slippiChars: { characterId: number; gameCount: number }[] = Array.isArray(p?.top_characters) ? p.top_characters : [];
@@ -319,13 +324,13 @@ export function registerIpcHandlers(
           id: f.id,
           friendId: f.friend_id,
           connectCode: code,
-          displayName: p?.display_name || c.display_name || null,
+          displayName: p?.display_name || null,
           discordUsername: showDiscord ? (p?.discord_username || null) : null,
           discordId: showDiscord ? (p?.discord_id || null) : null,
           avatarUrl: p?.hide_avatar ? null : (p?.avatar_url || null),
           region: p?.hide_region ? null : (p?.chosen_region || p?.region || null),
-          rating: c.rating_ordinal ?? null,
-          characterId: c.characters?.[0]?.character ?? null,
+          rating: rEntry?.effective_rating ?? null,
+          characterId: mainChar ?? slippiChars[0]?.characterId ?? null,
           topCharacters,
           onApp: !!f.friend_id,
           friendStatus: f.status || 'pending',
