@@ -568,6 +568,7 @@ export function registerIpcHandlers(
   });
 
   const INVITE_COOLDOWN_MS = 60 * 1000;
+  const INVITE_EXPIRY_MS = 5 * 60 * 1000;
 
   async function logEvent(userId: string, eventType: string, metadata: Record<string, any> = {}) {
     try {
@@ -635,10 +636,12 @@ export function registerIpcHandlers(
       const user = await getCurrentUser();
       if (!user) return [];
 
+      const expiry = new Date(Date.now() - INVITE_EXPIRY_MS).toISOString();
       const { data } = await supabase
         .from('play_invites')
         .select('id, sender_id, created_at, status, receiver_opened')
         .eq('receiver_id', user.id)
+        .gte('created_at', expiry)
         .order('created_at', { ascending: false });
       if (!data || data.length === 0) return [];
 
@@ -740,10 +743,12 @@ export function registerIpcHandlers(
       const user = await getCurrentUser();
       if (!user) return [];
 
+      const expiry = new Date(Date.now() - INVITE_EXPIRY_MS).toISOString();
       const { data } = await supabase
         .from('play_invites')
         .select('id, receiver_id, created_at, status, sender_opened')
         .eq('sender_id', user.id)
+        .gte('created_at', expiry)
         .order('created_at', { ascending: false });
       if (!data || data.length === 0) return [];
 
