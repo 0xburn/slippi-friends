@@ -254,7 +254,7 @@ export function Discover() {
   async function loadSentInvites() {
     try {
       const data = await window.api.getSentInvites();
-      setSentInvites((data || []).filter((d: any) => !d.sender_opened || d.status === 'pending' || d.status === 'accepted').slice(0, 10).map((d: any) => ({
+      const visible = (data || []).filter((d: any) => !d.sender_opened || d.status === 'pending' || d.status === 'accepted').slice(0, 10).map((d: any) => ({
         id: d.id,
         connectCode: d.connectCode || '',
         displayName: d.displayName,
@@ -262,7 +262,16 @@ export function Discover() {
         mainCharacter: d.mainCharacter ?? null,
         connectionType: d.connectionType ?? null,
         region: d.region ?? null,
-      })));
+      }));
+      setSentInvites(visible);
+      const activeCodes = new Set(visible.map((v) => v.connectCode));
+      setInviteSent((prev) => {
+        const next: Record<string, string | true> = {};
+        for (const [code, val] of Object.entries(prev)) {
+          if (activeCodes.has(code)) next[code] = val;
+        }
+        return Object.keys(next).length === Object.keys(prev).length ? prev : next;
+      });
     } catch {}
   }
 

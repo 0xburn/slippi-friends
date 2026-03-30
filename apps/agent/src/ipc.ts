@@ -677,7 +677,22 @@ export function registerIpcHandlers(
 
   ipcMain.handle('invite:dismiss', async (_e, inviteId: string) => {
     try {
+      const user = await getCurrentUser();
+      if (!user) return { error: 'Not authenticated' };
+
+      const { data: invite } = await supabase
+        .from('play_invites')
+        .select('sender_id, receiver_id')
+        .eq('id', inviteId)
+        .single();
+
       await supabase.from('play_invites').delete().eq('id', inviteId);
+
+      if (invite) {
+        const isSender = invite.sender_id === user.id;
+        await logEvent(user.id, isSender ? 'invite_cancelled' : 'invite_declined', { invite_id: inviteId });
+      }
+
       return { ok: true };
     } catch (e: any) { return { error: e.message }; }
   });

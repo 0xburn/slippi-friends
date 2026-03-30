@@ -288,6 +288,14 @@ export function Friends() {
         region: d.region ?? null,
       }));
       setSentInvites(invites);
+      const activeCodes = new Set(invites.map((v) => v.connectCode));
+      setInviteSent((prev) => {
+        const next: Record<string, string | true> = {};
+        for (const [code, val] of Object.entries(prev)) {
+          if (activeCodes.has(code)) next[code] = val;
+        }
+        return Object.keys(next).length === Object.keys(prev).length ? prev : next;
+      });
     } catch {}
   }
 
