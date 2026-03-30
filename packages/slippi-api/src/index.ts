@@ -6,16 +6,13 @@ export * from "./stages";
 
 export const ACCOUNT_MANAGEMENT_PAGE_QUERY = `
 fragment profileFields on NetplayProfile {
-  id
   ratingOrdinal
   ratingUpdateCount
   wins
   losses
   dailyGlobalPlacement
-  dailyRegionalPlacement
   continent
   characters {
-    id
     character
     gameCount
     __typename
@@ -23,46 +20,27 @@ fragment profileFields on NetplayProfile {
   __typename
 }
 
-fragment userProfilePage on User {
-  fbUid
-  displayName
-  connectCode {
-    code
-    __typename
-  }
-  status
-  activeSubscription {
-    level
-    hasGiftSub
-    __typename
-  }
-  rankedNetplayProfile {
-    ...profileFields
-    __typename
-  }
-  netplayProfiles {
-    ...profileFields
-    season {
-      id
-      startedAt
-      endedAt
-      name
-      status
+query PlayerLookup($cc: String, $uid: String) {
+  getUser(connectCode: $cc, fbUid: $uid) {
+    fbUid
+    displayName
+    connectCode {
+      code
       __typename
     }
-    __typename
-  }
-  __typename
-}
-
-query AccountManagementPageQuery($cc: String!, $uid: String!) {
-  getUser(fbUid: $uid) {
-    ...userProfilePage
-    __typename
-  }
-  getConnectCode(code: $cc) {
-    user {
-      ...userProfilePage
+    status
+    rankedNetplayProfile {
+      ...profileFields
+      __typename
+    }
+    rankedNetplayProfileHistory {
+      ...profileFields
+      season {
+        id
+        name
+        status
+        __typename
+      }
       __typename
     }
     __typename
@@ -106,16 +84,12 @@ export async function fetchSlippiPlayer(
 ): Promise<SlippiPlayerData | null> {
   try {
     const response = await fetch(
-      "https://gql-gateway-dot-slippi.uc.r.appspot.com/graphql",
+      "https://internal.slippi.gg/graphql",
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Origin: "https://slippi.gg",
-          Referer: "https://slippi.gg/",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          operationName: "AccountManagementPageQuery",
+          operationName: "PlayerLookup",
           variables: { cc: connectCode, uid: connectCode },
           query: ACCOUNT_MANAGEMENT_PAGE_QUERY,
         }),
@@ -124,13 +98,11 @@ export async function fetchSlippiPlayer(
 
     const data = (await response.json()) as {
       data?: {
-        getConnectCode?: { user?: SlippiUser | null } | null;
         getUser?: SlippiUser | null;
       };
     };
 
-    const user =
-      data?.data?.getConnectCode?.user ?? data?.data?.getUser ?? null;
+    const user = data?.data?.getUser ?? null;
     if (!user?.fbUid) {
       return null;
     }

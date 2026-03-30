@@ -47,6 +47,61 @@ function SkeletonCard() {
   );
 }
 
+const RANK_TIERS = [
+  { name: 'Bronze', min: 0, max: 1054.86, color: '#CD7F32' },
+  { name: 'Silver', min: 1054.87, max: 1435.51, color: '#C0C0C0' },
+  { name: 'Gold', min: 1435.52, max: 1751.93, color: '#FFD700' },
+  { name: 'Platinum', min: 1751.94, max: 2003.21, color: '#00CED1' },
+  { name: 'Diamond', min: 2003.22, max: 2274.99, color: '#4169E1' },
+  { name: 'Master', min: 2275, max: 99999, color: '#8B008B' },
+] as const;
+
+function EloFilter({ selected, onToggle, onClear }: {
+  selected: Set<number>;
+  onToggle: (idx: number) => void;
+  onClear: () => void;
+}) {
+  return (
+    <div className="space-y-2.5">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-gray-400">Filter by rank</span>
+        {selected.size > 0 && (
+          <button
+            onClick={onClear}
+            className="text-[10px] text-gray-500 hover:text-gray-300 transition-colors"
+          >
+            Clear ({selected.size})
+          </button>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {RANK_TIERS.map((tier, idx) => {
+          const active = selected.has(idx);
+          return (
+            <button
+              key={tier.name}
+              onClick={() => onToggle(idx)}
+              className={`
+                relative h-8 px-3 rounded-lg border transition-all flex items-center justify-center text-xs font-bold
+                ${active
+                  ? 'ring-1'
+                  : 'opacity-60 hover:opacity-90'
+                }
+              `}
+              style={active
+                ? { borderColor: `${tier.color}99`, backgroundColor: `${tier.color}22`, color: tier.color, boxShadow: `0 0 0 1px ${tier.color}44` }
+                : { borderColor: '#2a2a2a', backgroundColor: '#141414', color: tier.color }
+              }
+            >
+              {tier.name}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 const HIDDEN_CHARACTERS = new Set([23]);
 const ALL_CHARACTER_IDS = Object.keys(CHARACTER_MAP).map(Number)
   .filter((id) => !HIDDEN_CHARACTERS.has(id))
@@ -169,15 +224,26 @@ export function Discover() {
   const [dcStarting, setDcStarting] = useState(false);
   const [dcStatus, setDcStatus] = useState<{ status: string; message: string; connectCode?: string } | null>(null);
   const [charFilter, setCharFilter] = useState<Set<number>>(new Set());
+  const [eloFilter, setEloFilter] = useState<Set<number>>(new Set());
   const [search, setSearch] = useState('');
   const charFilterRef = useRef(charFilter);
   charFilterRef.current = charFilter;
+  const eloFilterRef = useRef(eloFilter);
+  eloFilterRef.current = eloFilter;
 
-  async function load(chars?: Set<number>) {
+  async function load(chars?: Set<number>, elo?: Set<number>) {
     const filter = chars ?? charFilterRef.current;
+    const eloSel = elo ?? eloFilterRef.current;
     try {
-      const ids = filter.size > 0 ? Array.from(filter) : undefined;
-      const data = await window.api.discoverPlayers(ids);
+      const characterIds = filter.size > 0 ? Array.from(filter) : undefined;
+      let minElo: number | undefined;
+      let maxElo: number | undefined;
+      if (eloSel.size > 0) {
+        const indices = Array.from(eloSel);
+        minElo = Math.min(...indices.map((i) => RANK_TIERS[i].min));
+        maxElo = Math.max(...indices.map((i) => RANK_TIERS[i].max));
+      }
+      const data = await window.api.discoverPlayers({ characterIds, minElo, maxElo });
       setPlayers(data || []);
     } catch {}
     setLoading(false);
@@ -341,6 +407,23 @@ export function Discover() {
     load(new Set());
   }
 
+  function toggleElo(idx: number) {
+    setEloFilter((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      setLoading(true);
+      load(undefined, next);
+      return next;
+    });
+  }
+
+  function clearEloFilter() {
+    setEloFilter(new Set());
+    setLoading(true);
+    load(undefined, new Set());
+  }
+
   const ago = Math.round((Date.now() - lastRefresh) / 1000);
   const refreshLabel = ago < 5 ? 'just now' : `${ago}s ago`;
 
@@ -376,6 +459,12 @@ export function Discover() {
         selected={charFilter}
         onToggle={toggleChar}
         onClear={clearFilter}
+      />
+
+      <EloFilter
+        selected={eloFilter}
+        onToggle={toggleElo}
+        onClear={clearEloFilter}
       />
 
       <input
@@ -538,7 +627,7 @@ export function Discover() {
           </>
         )}
 
-        {!loading && filtered.length === 0 && !search && charFilter.size === 0 && (
+        {!loading && filtered.length === 0 && !search && charFilter.size === 0 && eloFilter.size === 0 && (
           <div className="rounded-2xl border border-[#2a2a2a] bg-[#141414] p-12 text-center">
             <p className="text-gray-500 text-sm">
               No players online right now. Check back later!
@@ -546,10 +635,13 @@ export function Discover() {
           </div>
         )}
 
-        {!loading && filtered.length === 0 && (search || charFilter.size > 0) && (
+        {!loading && filtered.length === 0 && (search || charFilter.size > 0 || eloFilter.size > 0) && (
           <div className="rounded-2xl border border-[#2a2a2a] bg-[#141414] p-12 text-center">
             <p className="text-gray-500 text-sm">
-              {search ? 'No players match your search.' : 'No players match the selected characters.'}
+              {search ? 'No players match your search.'
+                : eloFilter.size > 0 && charFilter.size > 0 ? 'No players match the selected rank and characters.'
+                : eloFilter.size > 0 ? 'No players match the selected rank.'
+                : 'No players match the selected characters.'}
             </p>
           </div>
         )}

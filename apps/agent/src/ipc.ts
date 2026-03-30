@@ -25,6 +25,135 @@ function slippiNameToId(name: string): number | null {
   return SLIPPI_API_NAME_TO_ID[name] ?? null;
 }
 
+interface RatingCacheEntry {
+  currentRating: number | null;
+  currentWins: number;
+  currentLosses: number;
+  peakPastRating: number | null;
+  effectiveRating: number | null;
+  seasons: { ratingOrdinal: number | null; wins: number; losses: number; seasonId: string | null; seasonName: string | null; seasonStatus: string | null }[];
+  fetchedAt: number;
+}
+
+const slippiRatingCache = new Map<string, RatingCacheEntry>();
+const RATING_CACHE_TTL = 30 * 60 * 1000;
+
+const RATING_QUERY = `
+fragment profileFields on NetplayProfile {
+  ratingOrdinal ratingUpdateCount wins losses __typename
+}
+query RatingLookup($cc: String, $uid: String) {
+  getUser(connectCode: $cc, fbUid: $uid) {
+    rankedNetplayProfile { ...profileFields __typename }
+    rankedNetplayProfileHistory {
+      ...profileFields
+      season { id name status __typename }
+      __typename
+    }
+    __typename
+  }
+}`.trim();
+
+async function fetchSlippiRating(connectCode: string): Promise<RatingCacheEntry | null> {
+  try {
+    const res = await fetch('https://internal.slippi.gg/graphql', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        operationName: 'RatingLookup',
+        variables: { cc: connectCode, uid: connectCode },
+        query: RATING_QUERY,
+      }),
+    });
+    if (!res.ok) return null;
+    const text = await res.text();
+    let data: any;
+    try { data = JSON.parse(text); } catch { return null; }
+    const user = data?.data?.getUser;
+    if (!user) return null;
+
+    const ranked = user.rankedNetplayProfile;
+    const currentRating: number | null = ranked?.ratingOrdinal ?? null;
+    const currentWins: number = ranked?.wins ?? 0;
+    const currentLosses: number = ranked?.losses ?? 0;
+
+    const history: any[] = user.rankedNetplayProfileHistory ?? [];
+    const peakPastRating = history
+      .filter((p: any) => p.season?.status !== 'active' && p.ratingOrdinal != null)
+      .reduce((max: number | null, p: any) =>
+        max == null || p.ratingOrdinal > max ? p.ratingOrdinal : max, null);
+
+    let effectiveRating: number | null;
+    if (currentWins + currentLosses > 0) {
+      effectiveRating = currentRating;
+    } else if (peakPastRating != null) {
+      effectiveRating = peakPastRating;
+    } else {
+      effectiveRating = null;
+    }
+
+    const seasons = history.map((p: any) => ({
+      ratingOrdinal: p.ratingOrdinal ?? null,
+      wins: p.wins ?? 0,
+      losses: p.losses ?? 0,
+      seasonId: p.season?.id ?? null,
+      seasonName: p.season?.name ?? null,
+      seasonStatus: p.season?.status ?? null,
+    }));
+
+    return { currentRating, currentWins, currentLosses, peakPastRating, effectiveRating, seasons, fetchedAt: Date.now() };
+  } catch {
+    return null;
+  }
+}
+
+async function upsertPlayerRating(connectCode: string, entry: RatingCacheEntry): Promise<void> {
+  try {
+    await supabase.from('player_ratings').upsert({
+      connect_code: connectCode,
+      current_rating: entry.currentRating,
+      current_wins: entry.currentWins,
+      current_losses: entry.currentLosses,
+      peak_past_rating: entry.peakPastRating,
+      effective_rating: entry.effectiveRating,
+      seasons: entry.seasons,
+      fetched_at: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.error('upsertPlayerRating', connectCode, e);
+  }
+}
+
+async function batchFetchRatings(codes: string[]): Promise<Map<string, RatingCacheEntry>> {
+  const result = new Map<string, RatingCacheEntry>();
+  const toFetch: string[] = [];
+  const now = Date.now();
+
+  for (const code of codes) {
+    const cached = slippiRatingCache.get(code);
+    if (cached && (now - cached.fetchedAt) < RATING_CACHE_TTL) {
+      result.set(code, cached);
+    } else {
+      toFetch.push(code);
+    }
+  }
+
+  const CONCURRENCY = 5;
+  for (let i = 0; i < toFetch.length; i += CONCURRENCY) {
+    const batch = toFetch.slice(i, i + CONCURRENCY);
+    const entries = await Promise.all(batch.map(fetchSlippiRating));
+    for (let j = 0; j < batch.length; j++) {
+      if (entries[j]) {
+        slippiRatingCache.set(batch[j], entries[j]!);
+        result.set(batch[j], entries[j]!);
+        void upsertPlayerRating(batch[j], entries[j]!);
+      }
+    }
+  }
+
+  return result;
+}
+
 let mainWindow: BrowserWindow | null = null;
 
 export function sendToRenderer(channel: string, ...args: any[]): void {
@@ -38,6 +167,28 @@ export function registerIpcHandlers(
   opts?: { onLogout?: () => Promise<void> },
 ): void {
   mainWindow = win;
+
+  // Refresh own player_ratings entry daily (non-blocking, after auth settles)
+  const RATING_STALE_MS = 24 * 60 * 60 * 1000;
+  setTimeout(async () => {
+    try {
+      const user = await getCurrentUser();
+      if (!user) return;
+      const identity = getIdentity();
+      if (!identity?.connectCode) return;
+      const code = identity.connectCode;
+      const { data } = await supabase.from('player_ratings').select('fetched_at').eq('connect_code', code).single();
+      if (data?.fetched_at && (Date.now() - new Date(data.fetched_at).getTime()) < RATING_STALE_MS) return;
+      console.log('[ratings] refreshing own rating for', code);
+      const entry = await fetchSlippiRating(code);
+      if (entry) {
+        slippiRatingCache.set(code, entry);
+        void upsertPlayerRating(code, entry);
+      }
+    } catch (e) {
+      console.error('[ratings] daily refresh failed', e);
+    }
+  }, 10_000);
 
   ipcMain.handle('auth:start', async () => {
     if (process.platform === 'linux') {
@@ -786,7 +937,10 @@ export function registerIpcHandlers(
     } catch (e) { console.error('presence:friendStatuses', e); return {}; }
   });
 
-  ipcMain.handle('discover:list', async (_e, characterIds?: number[]) => {
+  ipcMain.handle('discover:list', async (_e, opts?: { characterIds?: number[]; minElo?: number; maxElo?: number }) => {
+    const characterIds = opts?.characterIds;
+    const minElo = opts?.minElo ?? null;
+    const maxElo = opts?.maxElo ?? null;
     const filterChars = Array.isArray(characterIds) && characterIds.length > 0
       ? new Set(characterIds)
       : null;
@@ -846,10 +1000,16 @@ export function registerIpcHandlers(
       filtered.forEach((p: any) => { profileMap[p.id] = p; });
 
       const codes = filtered.map((p: any) => p.connect_code).filter(Boolean);
-      let cacheMap: Record<string, any> = {};
+      let ratingsMap: Record<string, any> = {};
       if (codes.length > 0) {
-        const { data: cached } = await supabase.from('slippi_cache').select('*').in('connect_code', codes);
-        if (cached) cached.forEach((c: any) => { cacheMap[c.connect_code] = c; });
+        const { data: ratings } = await supabase.from('player_ratings').select('connect_code, effective_rating').in('connect_code', codes);
+        if (ratings) ratings.forEach((r: any) => { ratingsMap[r.connect_code] = r; });
+      }
+
+      // Opportunistically populate player_ratings for players missing from DB
+      const missingCodes = codes.filter((c: string) => !ratingsMap[c]);
+      if (missingCodes.length > 0) {
+        void batchFetchRatings(missingCodes);
       }
 
       const matchHistoryMap: Record<string, string> = {};
@@ -876,7 +1036,7 @@ export function registerIpcHandlers(
         .filter((r: any) => profileMap[r.user_id])
         .map((r: any) => {
           const p = profileMap[r.user_id];
-          const c = cacheMap[p.connect_code] || {};
+          const rEntry = ratingsMap[p.connect_code];
           const hasGeo = myLat != null && myLng != null && p.latitude != null && p.longitude != null;
           let distance: number;
           if (hasGeo) {
@@ -899,11 +1059,11 @@ export function registerIpcHandlers(
           return {
             userId: p.id,
             connectCode: p.connect_code,
-            displayName: p.display_name || c.display_name || null,
+            displayName: p.display_name || null,
             discordUsername: p.hide_discord_unless_friends ? null : (p.discord_username || null),
             discordId: p.hide_discord_unless_friends ? null : (p.discord_id || null),
             avatarUrl: p.hide_avatar ? null : (p.avatar_url || null),
-            rating: c.rating_ordinal ?? null,
+            rating: rEntry?.effective_rating ?? null,
             topCharacters: (() => {
               const slippi: { characterId: number; gameCount: number }[] = Array.isArray(p.top_characters) ? p.top_characters : [];
               const resolved: { characterId: number; gameCount: number }[] = [];
@@ -925,8 +1085,20 @@ export function registerIpcHandlers(
           };
         });
 
+      const eloFilterActive = minElo != null || maxElo != null;
       const MAX_DISTANCE = 2000;
-      results = results.filter((r: any) => r.distance <= MAX_DISTANCE);
+      if (!eloFilterActive) {
+        results = results.filter((r: any) => r.distance <= MAX_DISTANCE);
+      }
+
+      if (eloFilterActive) {
+        results = results.filter((r: any) => {
+          if (r.rating == null) return false;
+          if (minElo != null && r.rating < minElo) return false;
+          if (maxElo != null && r.rating > maxElo) return false;
+          return true;
+        });
+      }
 
       results.sort((a: any, b: any) => {
         const hasHistoryA = a.lastPlayedAt ? 1 : 0;
@@ -1286,7 +1458,7 @@ export function registerIpcHandlers(
           getUser(connectCode: $cc, fbUid: $uid) { ...userProfilePage __typename }
         }
       `;
-      const res = await fetch('https://internal.slippi.gg', {
+      const res = await fetch('https://internal.slippi.gg/graphql', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -180,20 +180,6 @@ function SessionRow({
           </div>
         </div>
 
-        {hasRecord && (
-          <div className="shrink-0 text-right">
-            <span className="font-mono text-sm font-bold">
-              <span className={session.wins >= session.losses ? 'text-[#21BA45]' : 'text-white'}>
-                {session.wins}
-              </span>
-              <span className="text-gray-600">-</span>
-              <span className={session.losses > session.wins ? 'text-red-400' : 'text-white'}>
-                {session.losses}
-              </span>
-            </span>
-          </div>
-        )}
-
         <span className="text-xs text-gray-500 whitespace-nowrap shrink-0">
           {timeAgo(session.latestPlayedAt)}
         </span>

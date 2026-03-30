@@ -47,7 +47,7 @@ const api = {
   onIdentityMismatch: (cb: (info: any) => void): Unsubscribe => onEvent('identity:mismatch', cb),
   onCodeClaimed: (cb: (info: any) => void): Unsubscribe => onEvent('identity:codeClaimed', cb),
 
-  discoverPlayers: (characterIds?: number[]) => ipcRenderer.invoke('discover:list', characterIds),
+  discoverPlayers: (opts?: { characterIds?: number[]; minElo?: number; maxElo?: number }) => ipcRenderer.invoke('discover:list', opts),
 
   getLeaderboard: (limit?: number) => ipcRenderer.invoke('leaderboard:top', limit) as Promise<{ userId: string; connectCode: string; displayName: string; avatarUrl: string | null; mainCharacter: number | null; inGameSeconds: number; rankChange: number }[]>,
 

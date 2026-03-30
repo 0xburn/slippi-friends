@@ -1,23 +1,25 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const SLIPPI_GQL_ENDPOINT = 'https://gql-gateway-dot-slippi.uc.r.appspot.com/graphql';
+const SLIPPI_GQL_ENDPOINT = 'https://internal.slippi.gg/graphql';
 
 const SLIPPI_QUERY = `
 fragment profileFields on NetplayProfile {
-  id ratingOrdinal ratingUpdateCount wins losses dailyGlobalPlacement dailyRegionalPlacement continent
-  characters { id character gameCount __typename }
+  ratingOrdinal ratingUpdateCount wins losses dailyGlobalPlacement continent
+  characters { character gameCount __typename }
   __typename
 }
-fragment userProfilePage on User {
-  fbUid displayName connectCode { code __typename } status
-  activeSubscription { level hasGiftSub __typename }
-  rankedNetplayProfile { ...profileFields __typename }
-  __typename
-}
-query AccountManagementPageQuery($cc: String!, $uid: String!) {
-  getUser(fbUid: $uid) { ...userProfilePage __typename }
-  getConnectCode(code: $cc) { user { ...userProfilePage __typename } __typename }
+query EnrichLookup($cc: String, $uid: String) {
+  getUser(connectCode: $cc, fbUid: $uid) {
+    fbUid displayName connectCode { code __typename } status
+    rankedNetplayProfile { ...profileFields __typename }
+    rankedNetplayProfileHistory {
+      ...profileFields
+      season { id name status __typename }
+      __typename
+    }
+    __typename
+  }
 }`;
 
 const CACHE_TTL_MS = 60 * 60 * 1000;
@@ -64,20 +66,16 @@ serve(async (req) => {
 
     const slippiRes = await fetch(SLIPPI_GQL_ENDPOINT, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Origin': 'https://slippi.gg',
-        'Referer': 'https://slippi.gg/',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        operationName: 'AccountManagementPageQuery',
+        operationName: 'EnrichLookup',
         variables: { cc: connectCode, uid: connectCode },
         query: SLIPPI_QUERY,
       }),
     });
 
     const data = await slippiRes.json();
-    const user = data?.data?.getConnectCode?.user;
+    const user = data?.data?.getUser;
 
     if (!user) {
       return new Response(

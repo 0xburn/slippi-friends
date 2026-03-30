@@ -1,34 +1,33 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const SLIPPI_GQL_ENDPOINT = 'https://gql-gateway-dot-slippi.uc.r.appspot.com/graphql';
+const SLIPPI_GQL_ENDPOINT = 'https://internal.slippi.gg/graphql';
 
 const SLIPPI_QUERY = `
 fragment profileFields on NetplayProfile {
-  id
   ratingOrdinal
   ratingUpdateCount
   wins
   losses
   dailyGlobalPlacement
-  dailyRegionalPlacement
   continent
-  characters { id character gameCount __typename }
+  characters { character gameCount __typename }
   __typename
 }
-fragment userProfilePage on User {
-  fbUid
-  displayName
-  connectCode { code __typename }
-  status
-  activeSubscription { level hasGiftSub __typename }
-  rankedNetplayProfile { ...profileFields __typename }
-  netplayProfiles { ...profileFields season { id startedAt endedAt name status __typename } __typename }
-  __typename
-}
-query AccountManagementPageQuery($cc: String!, $uid: String!) {
-  getUser(fbUid: $uid) { ...userProfilePage __typename }
-  getConnectCode(code: $cc) { user { ...userProfilePage __typename } __typename }
+query VerifyLookup($cc: String, $uid: String) {
+  getUser(connectCode: $cc, fbUid: $uid) {
+    fbUid
+    displayName
+    connectCode { code __typename }
+    status
+    rankedNetplayProfile { ...profileFields __typename }
+    rankedNetplayProfileHistory {
+      ...profileFields
+      season { id name status __typename }
+      __typename
+    }
+    __typename
+  }
 }`;
 
 const corsHeaders = {
@@ -46,20 +45,16 @@ serve(async (req) => {
 
     const slippiRes = await fetch(SLIPPI_GQL_ENDPOINT, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Origin': 'https://slippi.gg',
-        'Referer': 'https://slippi.gg/',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        operationName: 'AccountManagementPageQuery',
+        operationName: 'VerifyLookup',
         variables: { cc: connectCode, uid: slippiUid },
         query: SLIPPI_QUERY,
       }),
     });
 
     const data = await slippiRes.json();
-    const user = data?.data?.getConnectCode?.user;
+    const user = data?.data?.getUser;
 
     if (!user || user.fbUid !== slippiUid) {
       return new Response(
@@ -141,6 +136,49 @@ serve(async (req) => {
         global_placement: r.dailyGlobalPlacement,
         continent: r.continent,
         characters: r.characters?.map((c: any) => ({ character: c.character, gameCount: c.gameCount })) ?? [],
+        fetched_at: new Date().toISOString(),
+      });
+    }
+
+    // Populate player_ratings with current + historical elo
+    {
+      const ranked = user.rankedNetplayProfile;
+      const currentRating = ranked?.ratingOrdinal ?? null;
+      const currentWins = ranked?.wins ?? 0;
+      const currentLosses = ranked?.losses ?? 0;
+
+      const history: any[] = user.rankedNetplayProfileHistory ?? [];
+      const peakPastRating = history
+        .filter((p: any) => p.season?.status !== 'active' && p.ratingOrdinal != null)
+        .reduce((max: number | null, p: any) =>
+          max == null || p.ratingOrdinal > max ? p.ratingOrdinal : max, null);
+
+      let effectiveRating: number | null;
+      if (currentWins + currentLosses > 0) {
+        effectiveRating = currentRating;
+      } else if (peakPastRating != null) {
+        effectiveRating = peakPastRating;
+      } else {
+        effectiveRating = null;
+      }
+
+      const seasons = history.map((p: any) => ({
+        ratingOrdinal: p.ratingOrdinal,
+        wins: p.wins,
+        losses: p.losses,
+        seasonId: p.season?.id ?? null,
+        seasonName: p.season?.name ?? null,
+        seasonStatus: p.season?.status ?? null,
+      }));
+
+      await supabase.from('player_ratings').upsert({
+        connect_code: connectCode,
+        current_rating: currentRating,
+        current_wins: currentWins,
+        current_losses: currentLosses,
+        peak_past_rating: peakPastRating,
+        effective_rating: effectiveRating,
+        seasons,
         fetched_at: new Date().toISOString(),
       });
     }
