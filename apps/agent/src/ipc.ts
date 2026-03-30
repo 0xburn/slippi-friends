@@ -647,7 +647,7 @@ export function registerIpcHandlers(
 
       const senderIds = data.map((d: any) => d.sender_id);
       const [{ data: profiles }, { data: presRows }] = await Promise.all([
-        supabase.from('profiles').select('id, connect_code, display_name, discord_username, main_character, top_characters, hide_connection_type, region, hide_region').in('id', senderIds),
+        supabase.from('profiles').select('id, connect_code, display_name, discord_username, avatar_url, hide_avatar, hide_discord_unless_friends, main_character, top_characters, hide_connection_type, region, hide_region').in('id', senderIds),
         supabase.from('presence_log').select('user_id, connection_type').in('user_id', senderIds),
       ]);
       const profileMap: Record<string, any> = {};
@@ -655,17 +655,27 @@ export function registerIpcHandlers(
       const presMap: Record<string, any> = {};
       (presRows || []).forEach((r: any) => { presMap[r.user_id] = r; });
 
+      const codes = (profiles || []).map((p: any) => p.connect_code).filter(Boolean);
+      let ratingsMap: Record<string, any> = {};
+      if (codes.length > 0) {
+        const { data: ratings } = await supabase.from('player_ratings').select('connect_code, effective_rating').in('connect_code', codes);
+        if (ratings) ratings.forEach((r: any) => { ratingsMap[r.connect_code] = r; });
+      }
+
       const result = data.map((d: any) => {
         const p = profileMap[d.sender_id] || {};
         const pres = presMap[d.sender_id] || {};
         const slippiChars: any[] = Array.isArray(p.top_characters) ? p.top_characters : [];
         const mainChar = p.main_character ?? slippiChars[0]?.characterId ?? null;
+        const rEntry = ratingsMap[p.connect_code];
         return {
           ...d,
           connectCode: p.connect_code,
           displayName: p.display_name,
-          discordUsername: p.discord_username,
+          discordUsername: p.hide_discord_unless_friends ? null : (p.discord_username || null),
+          avatarUrl: p.hide_avatar ? null : (p.avatar_url || null),
           mainCharacter: mainChar,
+          rating: rEntry?.effective_rating ?? null,
           connectionType: p.hide_connection_type ? null : (pres.connection_type || null),
           region: p.hide_region ? null : (p.region || null),
         };
@@ -769,7 +779,7 @@ export function registerIpcHandlers(
 
       const receiverIds = data.map((d: any) => d.receiver_id);
       const [{ data: profiles }, { data: presRows }] = await Promise.all([
-        supabase.from('profiles').select('id, connect_code, display_name, discord_username, main_character, top_characters, hide_connection_type, region, hide_region').in('id', receiverIds),
+        supabase.from('profiles').select('id, connect_code, display_name, discord_username, avatar_url, hide_avatar, hide_discord_unless_friends, main_character, top_characters, hide_connection_type, region, hide_region').in('id', receiverIds),
         supabase.from('presence_log').select('user_id, connection_type').in('user_id', receiverIds),
       ]);
       const profileMap: Record<string, any> = {};
@@ -777,17 +787,27 @@ export function registerIpcHandlers(
       const presMap: Record<string, any> = {};
       (presRows || []).forEach((r: any) => { presMap[r.user_id] = r; });
 
+      const codes = (profiles || []).map((p: any) => p.connect_code).filter(Boolean);
+      let ratingsMap: Record<string, any> = {};
+      if (codes.length > 0) {
+        const { data: ratings } = await supabase.from('player_ratings').select('connect_code, effective_rating').in('connect_code', codes);
+        if (ratings) ratings.forEach((r: any) => { ratingsMap[r.connect_code] = r; });
+      }
+
       const result = data.map((d: any) => {
         const p = profileMap[d.receiver_id] || {};
         const pres = presMap[d.receiver_id] || {};
         const slippiChars: any[] = Array.isArray(p.top_characters) ? p.top_characters : [];
         const mainChar = p.main_character ?? slippiChars[0]?.characterId ?? null;
+        const rEntry = ratingsMap[p.connect_code];
         return {
           ...d,
           connectCode: p.connect_code,
           displayName: p.display_name,
-          discordUsername: p.discord_username,
+          discordUsername: p.hide_discord_unless_friends ? null : (p.discord_username || null),
+          avatarUrl: p.hide_avatar ? null : (p.avatar_url || null),
           mainCharacter: mainChar,
+          rating: rEntry?.effective_rating ?? null,
           connectionType: p.hide_connection_type ? null : (pres.connection_type || null),
           region: p.hide_region ? null : (p.region || null),
         };

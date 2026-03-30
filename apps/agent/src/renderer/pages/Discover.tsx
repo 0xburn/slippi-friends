@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { PlayerCard } from '../components/PlayerCard';
 import { CharacterIcon } from '../components/CharacterIcon';
 import { ConnectionTypeIcon } from '../components/ConnectionTypeIcon';
+import { RankBadge } from '../components/RankBadge';
 import { CHARACTER_MAP, getCharacterImagePath, getCharacterShortName } from '../lib/characters';
 
 interface DiscoverPlayer {
@@ -218,8 +219,8 @@ export function Discover() {
   const [addNote, setAddNote] = useState<string | null>(null);
   const [inviting, setInviting] = useState<string | null>(null);
   const [inviteSent, setInviteSent] = useState<Record<string, string | true>>({});
-  const [sentInvites, setSentInvites] = useState<{ id: string; connectCode: string; displayName?: string; status: string; mainCharacter?: number | null; connectionType?: 'wifi' | 'ethernet' | null; region?: string | null }[]>([]);
-  const [playInvites, setPlayInvites] = useState<{ id: string; connectCode: string; displayName?: string; status: string; mainCharacter?: number | null; connectionType?: 'wifi' | 'ethernet' | null; region?: string | null }[]>([]);
+  const [sentInvites, setSentInvites] = useState<{ id: string; connectCode: string; displayName?: string; avatarUrl?: string; rating?: number | null; status: string; mainCharacter?: number | null; connectionType?: 'wifi' | 'ethernet' | null; region?: string | null }[]>([]);
+  const [playInvites, setPlayInvites] = useState<{ id: string; connectCode: string; displayName?: string; avatarUrl?: string; rating?: number | null; status: string; mainCharacter?: number | null; connectionType?: 'wifi' | 'ethernet' | null; region?: string | null }[]>([]);
   const [acceptingInvite, setAcceptingInvite] = useState<string | null>(null);
   const [dcStarting, setDcStarting] = useState(false);
   const [dcStatus, setDcStatus] = useState<{ status: string; message: string; connectCode?: string } | null>(null);
@@ -493,16 +494,29 @@ export function Discover() {
                 : 'border-amber-500/20 bg-amber-500/5'
             }`}>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 min-w-0">
-                  {inv.mainCharacter != null && (
-                    <CharacterIcon characterId={inv.mainCharacter} size="sm" />
+                <div className="flex items-center gap-3 min-w-0">
+                  {inv.avatarUrl ? (
+                    <img src={inv.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover shrink-0 border border-[#2a2a2a]" />
+                  ) : inv.mainCharacter != null ? (
+                    <CharacterIcon characterId={inv.mainCharacter} size="md" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-gray-600 text-xs font-bold shrink-0">
+                      {(inv.connectCode || '??').slice(0, 2)}
+                    </div>
                   )}
-                  <span className="font-mono font-bold text-white text-sm">{inv.connectCode}</span>
-                  {inv.displayName && (
-                    <span className="text-xs text-gray-500 truncate">{inv.displayName}</span>
-                  )}
-                  {inv.connectionType && <ConnectionTypeIcon type={inv.connectionType} />}
-                  {inv.region && <span className="text-[10px] text-gray-500">{inv.region}</span>}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-white text-sm">{inv.connectCode}</span>
+                      {inv.mainCharacter != null && !inv.avatarUrl && <CharacterIcon characterId={inv.mainCharacter} size="sm" />}
+                      {inv.connectionType && <ConnectionTypeIcon type={inv.connectionType} />}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {inv.displayName && <span className="text-xs text-gray-500 truncate">{inv.displayName}</span>}
+                      {inv.region && <span className="text-[10px] text-gray-500">{inv.region}</span>}
+                    </div>
+                  </div>
+                  {inv.mainCharacter != null && inv.avatarUrl && <CharacterIcon characterId={inv.mainCharacter} size="sm" />}
+                  <RankBadge rating={inv.rating ?? null} />
                 </div>
                 {inv.status === 'accepted' ? (
                   <div className="flex items-center gap-2">
@@ -529,7 +543,7 @@ export function Discover() {
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-amber-400">{inv.connectCode} wants to play!</span>
+                    <span className="text-sm font-medium text-amber-400">wants to play!</span>
                     <button
                       onClick={() => handleAcceptInvite(inv.id)}
                       disabled={acceptingInvite === inv.id}

@@ -65,8 +65,8 @@ export function Friends() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [inviteSent, setInviteSent] = useState<Record<string, string | true>>({});
   const [inviting, setInviting] = useState<string | null>(null);
-  const [playInvites, setPlayInvites] = useState<{ id: string; connectCode: string; displayName?: string; discordUsername?: string; created_at: string; status: string; myOpened?: boolean; mainCharacter?: number | null; connectionType?: 'wifi' | 'ethernet' | null; region?: string | null }[]>([]);
-  const [sentInvites, setSentInvites] = useState<{ id: string; connectCode: string; displayName?: string; discordUsername?: string; created_at: string; status: string; myOpened?: boolean; mainCharacter?: number | null; connectionType?: 'wifi' | 'ethernet' | null; region?: string | null }[]>([]);
+  const [playInvites, setPlayInvites] = useState<{ id: string; connectCode: string; displayName?: string; discordUsername?: string; avatarUrl?: string; rating?: number | null; created_at: string; status: string; myOpened?: boolean; mainCharacter?: number | null; connectionType?: 'wifi' | 'ethernet' | null; region?: string | null }[]>([]);
+  const [sentInvites, setSentInvites] = useState<{ id: string; connectCode: string; displayName?: string; discordUsername?: string; avatarUrl?: string; rating?: number | null; created_at: string; status: string; myOpened?: boolean; mainCharacter?: number | null; connectionType?: 'wifi' | 'ethernet' | null; region?: string | null }[]>([]);
   const [acceptingInvite, setAcceptingInvite] = useState<string | null>(null);
   const [dcStatus, setDcStatus] = useState<{ status: string; message: string; connectCode?: string } | null>(null);
   const [dcStarting, setDcStarting] = useState(false);
@@ -784,14 +784,29 @@ export function Friends() {
                 : 'border-amber-500/20 bg-amber-500/5'
             }`}>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-mono font-bold text-white text-sm">{inv.connectCode}</span>
-                  {inv.displayName && (
-                    <span className="text-xs text-gray-500 truncate">{inv.displayName}</span>
+                <div className="flex items-center gap-3 min-w-0">
+                  {inv.avatarUrl ? (
+                    <img src={inv.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover shrink-0 border border-[#2a2a2a]" />
+                  ) : inv.mainCharacter != null ? (
+                    <CharacterIcon characterId={inv.mainCharacter} size="md" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-gray-600 text-xs font-bold shrink-0">
+                      {(inv.connectCode || '??').slice(0, 2)}
+                    </div>
                   )}
-                  {inv.mainCharacter != null && <CharacterIcon characterId={inv.mainCharacter} size="sm" />}
-                  {inv.connectionType && <ConnectionTypeIcon type={inv.connectionType} />}
-                  {inv.region && <span className="text-[10px] text-gray-600 truncate">{inv.region}</span>}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-white text-sm">{inv.connectCode}</span>
+                      {inv.mainCharacter != null && !inv.avatarUrl && <CharacterIcon characterId={inv.mainCharacter} size="sm" />}
+                      {inv.connectionType && <ConnectionTypeIcon type={inv.connectionType} />}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {inv.displayName && <span className="text-xs text-gray-500 truncate">{inv.displayName}</span>}
+                      {inv.region && <span className="text-[10px] text-gray-600 truncate">{inv.region}</span>}
+                    </div>
+                  </div>
+                  {inv.mainCharacter != null && inv.avatarUrl && <CharacterIcon characterId={inv.mainCharacter} size="sm" />}
+                  <RankBadge rating={inv.rating ?? null} />
                 </div>
                 {inv.status === 'accepted' ? (
                   <div className="flex items-center gap-2">
@@ -818,7 +833,7 @@ export function Friends() {
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-amber-400">{inv.connectCode} wants to play!</span>
+                    <span className="text-sm font-medium text-amber-400">wants to play!</span>
                     <button
                       onClick={() => handleAcceptInvite(inv.id)}
                       disabled={acceptingInvite === inv.id}
