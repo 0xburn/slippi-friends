@@ -164,6 +164,10 @@ export function Discover() {
   const [inviting, setInviting] = useState<string | null>(null);
   const [inviteSent, setInviteSent] = useState<Record<string, string | true>>({});
   const [sentInvites, setSentInvites] = useState<{ id: string; connectCode: string; displayName?: string; status: string; mainCharacter?: number | null; connectionType?: 'wifi' | 'ethernet' | null; region?: string | null }[]>([]);
+  const [playInvites, setPlayInvites] = useState<{ id: string; connectCode: string; displayName?: string; status: string; mainCharacter?: number | null; connectionType?: 'wifi' | 'ethernet' | null; region?: string | null }[]>([]);
+  const [acceptingInvite, setAcceptingInvite] = useState<string | null>(null);
+  const [dcStarting, setDcStarting] = useState(false);
+  const [dcStatus, setDcStatus] = useState<{ status: string; message: string; connectCode?: string } | null>(null);
   const [charFilter, setCharFilter] = useState<Set<number>>(new Set());
   const [search, setSearch] = useState('');
   const charFilterRef = useRef(charFilter);
@@ -196,6 +200,54 @@ export function Discover() {
     } catch {}
   }
 
+  async function loadPlayInvites() {
+    try {
+      const data = await window.api.getPendingInvites();
+      setPlayInvites((data || []).filter((d: any) => !d.receiver_opened).slice(0, 10).map((d: any) => ({
+        id: d.id,
+        connectCode: d.connectCode || '',
+        displayName: d.displayName,
+        status: d.status || 'pending',
+        mainCharacter: d.mainCharacter ?? null,
+        connectionType: d.connectionType ?? null,
+        region: d.region ?? null,
+      })));
+    } catch {}
+  }
+
+  async function handleAcceptInvite(inviteId: string) {
+    setAcceptingInvite(inviteId);
+    await window.api.acceptPlayInvite(inviteId);
+    await loadPlayInvites();
+    setAcceptingInvite(null);
+  }
+
+  async function handleDeclineInvite(inviteId: string) {
+    await window.api.dismissInvite(inviteId);
+    await loadPlayInvites();
+  }
+
+  async function handleStopDirectConnect() {
+    await window.api.stopDirectConnect();
+    setDcStarting(false);
+    setDcStatus(null);
+  }
+
+  async function handleDirectConnect(connectCode: string, inviteId?: string) {
+    if (inviteId) {
+      await window.api.completeInvite(inviteId);
+      await Promise.all([loadPlayInvites(), loadSentInvites()]);
+    }
+    setDcStarting(true);
+    setDcStatus({ status: 'configuring', message: `Starting direct connect to ${connectCode}...`, connectCode });
+    const result = await window.api.startDirectConnect(connectCode);
+    if (result.error) {
+      setDcStatus({ status: 'error', message: result.error, connectCode });
+      setDcStarting(false);
+      setTimeout(() => setDcStatus(null), 5000);
+    }
+  }
+
   async function handleCancelSentInvite(inviteId: string) {
     await window.api.dismissInvite(inviteId);
     await loadSentInvites();
@@ -204,13 +256,33 @@ export function Discover() {
   useEffect(() => {
     load();
     loadSentInvites();
+    loadPlayInvites();
     window.api.getIdentity().then((id) => { if (id) setMyCode(id.connectCode); });
-    const interval = setInterval(() => { if (!document.hidden) { load(); loadSentInvites(); } }, 30_000);
-    const onVisible = () => { if (!document.hidden) { load(); loadSentInvites(); } };
+    const interval = setInterval(() => { if (!document.hidden) { load(); loadSentInvites(); loadPlayInvites(); } }, 30_000);
+    const onVisible = () => { if (!document.hidden) { load(); loadSentInvites(); loadPlayInvites(); } };
     document.addEventListener('visibilitychange', onVisible);
-    const unsubInvRefresh = window.api.onInvitesRefresh(() => { loadSentInvites(); });
-    return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onVisible); unsubInvRefresh(); };
+    const unsubInvRefresh = window.api.onInvitesRefresh(() => { loadSentInvites(); loadPlayInvites(); });
+    const unsubDc = window.api.onDirectConnectStatus((evt: any) => {
+      setDcStatus(evt);
+      if (evt.status === 'ready' || evt.status === 'error' || evt.status === 'cancelled') {
+        setDcStarting(false);
+        setTimeout(() => setDcStatus(null), 8000);
+      }
+    });
+    return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onVisible); unsubInvRefresh(); unsubDc(); };
   }, []);
+
+  const hasActiveInvites = sentInvites.length > 0 || playInvites.length > 0;
+
+  useEffect(() => {
+    if (!hasActiveInvites) return;
+    const fastPoll = setInterval(() => {
+      if (document.hidden) return;
+      loadPlayInvites();
+      loadSentInvites();
+    }, 3_000);
+    return () => clearInterval(fastPoll);
+  }, [hasActiveInvites]);
 
   function handleAddClick(connectCode: string) {
     setAddNote(null);
@@ -314,8 +386,63 @@ export function Discover() {
         className="w-full rounded-lg border border-[#2a2a2a] bg-[#0a0a0a] px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#21BA45]/50"
       />
 
-      {sentInvites.length > 0 && (
+      {(sentInvites.length > 0 || playInvites.length > 0) && (
         <div className="space-y-2">
+          {playInvites.map((inv) => (
+            <div key={`recv-${inv.id}`} className={`rounded-2xl border p-4 ${
+              inv.status === 'accepted'
+                ? 'border-[#21BA45]/30 bg-[#21BA45]/5'
+                : 'border-amber-500/20 bg-amber-500/5'
+            }`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 min-w-0">
+                  {inv.mainCharacter != null && (
+                    <CharacterIcon characterId={inv.mainCharacter} size="sm" />
+                  )}
+                  <span className="font-mono font-bold text-white text-sm">{inv.connectCode}</span>
+                  {inv.displayName && (
+                    <span className="text-xs text-gray-500 truncate">{inv.displayName}</span>
+                  )}
+                  {inv.connectionType && <ConnectionTypeIcon type={inv.connectionType} />}
+                  {inv.region && <span className="text-[10px] text-gray-500">{inv.region}</span>}
+                </div>
+                {inv.status === 'accepted' ? (
+                  <div className="flex items-center gap-2">
+                    <div className="flex flex-col items-end gap-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-[#21BA45]">Both Players are Ready!</span>
+                        <button
+                          onClick={() => handleDirectConnect(inv.connectCode, inv.id)}
+                          disabled={dcStarting}
+                          className="shrink-0 rounded-lg bg-blue-500 px-4 py-2 text-sm font-bold text-white hover:bg-blue-600 transition-colors disabled:opacity-40"
+                        >
+                          Open Melee
+                        </button>
+                      </div>
+                      <span className="text-xs text-gray-500">(connect code will be pre-filled in Direct mode!)</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-amber-400">{inv.connectCode} wants to play!</span>
+                    <button
+                      onClick={() => handleAcceptInvite(inv.id)}
+                      disabled={acceptingInvite === inv.id}
+                      className="shrink-0 rounded-lg bg-[#21BA45] px-4 py-2 text-sm font-bold text-white hover:bg-[#1ea33e] transition-colors disabled:opacity-50"
+                    >
+                      {acceptingInvite === inv.id ? '...' : 'Accept'}
+                    </button>
+                    <button
+                      onClick={() => handleDeclineInvite(inv.id)}
+                      className="shrink-0 rounded-lg bg-red-500/10 px-2.5 py-1.5 text-xs text-red-400 hover:bg-red-500/20 transition-colors"
+                    >
+                      Decline
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
           {sentInvites.map((inv) => (
             <div key={`sent-${inv.id}`} className={`rounded-2xl border p-4 ${
               inv.status === 'accepted'
@@ -335,7 +462,21 @@ export function Discover() {
                   {inv.region && <span className="text-[10px] text-gray-500">{inv.region}</span>}
                 </div>
                 {inv.status === 'accepted' ? (
-                  <span className="text-sm font-semibold text-[#21BA45]">Accepted!</span>
+                  <div className="flex items-center gap-2">
+                    <div className="flex flex-col items-end gap-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-[#21BA45]">Both Players are Ready!</span>
+                        <button
+                          onClick={() => handleDirectConnect(inv.connectCode, inv.id)}
+                          disabled={dcStarting}
+                          className="shrink-0 rounded-lg bg-blue-500 px-4 py-2 text-sm font-bold text-white hover:bg-blue-600 transition-colors disabled:opacity-40"
+                        >
+                          Open Melee
+                        </button>
+                      </div>
+                      <span className="text-xs text-gray-500">(connect code will be pre-filled in Direct mode!)</span>
+                    </div>
+                  </div>
                 ) : (
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
@@ -351,6 +492,40 @@ export function Discover() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {dcStatus && (
+        <div className={`rounded-2xl border p-4 flex items-center justify-between ${
+          dcStatus.status === 'error' ? 'border-red-500/20 bg-red-500/5' :
+          dcStatus.status === 'ready' ? 'border-[#21BA45]/20 bg-[#21BA45]/5' :
+          'border-blue-500/20 bg-blue-500/5'
+        }`}>
+          <div className="flex items-center gap-3 min-w-0">
+            {dcStatus.status !== 'error' && dcStatus.status !== 'ready' && dcStatus.status !== 'cancelled' && (
+              <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin shrink-0" />
+            )}
+            <div className="min-w-0">
+              <p className={`text-sm font-medium ${
+                dcStatus.status === 'error' ? 'text-red-400' :
+                dcStatus.status === 'ready' ? 'text-[#21BA45]' :
+                'text-blue-400'
+              }`}>
+                {dcStatus.message}
+              </p>
+              {dcStatus.connectCode && (
+                <p className="text-[10px] text-gray-500 font-mono">{dcStatus.connectCode}</p>
+              )}
+            </div>
+          </div>
+          {dcStatus.status !== 'error' && dcStatus.status !== 'ready' && dcStatus.status !== 'cancelled' && (
+            <button
+              onClick={handleStopDirectConnect}
+              className="shrink-0 rounded-lg bg-red-500/10 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/20 transition-colors"
+            >
+              Cancel
+            </button>
+          )}
         </div>
       )}
 
