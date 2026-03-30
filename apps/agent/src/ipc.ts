@@ -1097,8 +1097,12 @@ export function registerIpcHandlers(
 
           const resolved = resolvePresenceRow(r as any, PRESENCE_STALE_THRESHOLD, Date.now());
 
-          // Boost active players: LFG / status preset users appear closer
-          if (resolved.statusPreset || resolved.lookingToPlay) distance *= 0.4;
+          // Boost active players only within ~NY-to-FL range (~1,800 km / 250 sq-deg)
+          const MAX_BOOST_DISTANCE = 250;
+          if (distance <= MAX_BOOST_DISTANCE) {
+            if (resolved.statusPreset) distance *= 0.4;
+            else if (resolved.lookingToPlay) distance *= 0.5;
+          }
           return {
             userId: p.id,
             connectCode: p.connect_code,
