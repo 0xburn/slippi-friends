@@ -192,7 +192,7 @@ export function registerIpcHandlers(
 
       const { data: rawData } = await supabase
         .from('friends')
-        .select('id, user_id, friend_connect_code, status, created_at, note, profiles!friends_user_id_fkey(connect_code, display_name, discord_username, discord_id, avatar_url, hide_discord_unless_friends, hide_avatar)')
+        .select('id, user_id, friend_connect_code, status, created_at, note, profiles!friends_user_id_fkey(connect_code, display_name, discord_username, discord_id, avatar_url, hide_discord_unless_friends, hide_avatar, main_character, top_characters, hide_connection_type, region, hide_region)')
         .eq('friend_connect_code', profile.connect_code)
         .eq('status', 'pending');
       if (!rawData) return [];
@@ -203,16 +203,25 @@ export function registerIpcHandlers(
       });
 
       const codes = data.map((f: any) => (f.profiles as any)?.connect_code).filter(Boolean);
+      const senderIds = data.map((f: any) => f.user_id).filter(Boolean);
       let cacheMap: Record<string, any> = {};
+      let presenceMap: Record<string, any> = {};
       if (codes.length > 0) {
         const { data: cached } = await supabase.from('slippi_cache').select('*').in('connect_code', codes);
         if (cached) cached.forEach((c: any) => { cacheMap[c.connect_code] = c; });
+      }
+      if (senderIds.length > 0) {
+        const { data: presRows } = await supabase.from('presence_log').select('user_id, connection_type').in('user_id', senderIds);
+        if (presRows) presRows.forEach((r: any) => { presenceMap[r.user_id] = r; });
       }
 
       const result = data.map((f: any) => {
         const p = f.profiles as any;
         const code = p?.connect_code || '';
         const c = cacheMap[code] || {};
+        const pres = presenceMap[f.user_id] || {};
+        const slippiChars: any[] = Array.isArray(p?.top_characters) ? p.top_characters : [];
+        const mainChar = p?.main_character ?? slippiChars[0]?.characterId ?? c.characters?.[0]?.character ?? null;
         return {
           id: f.id,
           fromUserId: f.user_id,
@@ -222,7 +231,9 @@ export function registerIpcHandlers(
           discordId: p?.hide_discord_unless_friends ? null : (p?.discord_id || null),
           avatarUrl: p?.hide_avatar ? null : (p?.avatar_url || null),
           rating: c.rating_ordinal ?? null,
-          characterId: c.characters?.[0]?.character ?? null,
+          characterId: mainChar,
+          connectionType: p?.hide_connection_type ? null : (pres.connection_type || null),
+          region: p?.hide_region ? null : (p?.region || null),
           note: f.note || null,
         };
       });
@@ -481,19 +492,30 @@ export function registerIpcHandlers(
       if (!data || data.length === 0) return [];
 
       const senderIds = data.map((d: any) => d.sender_id);
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, connect_code, display_name, discord_username')
-        .in('id', senderIds);
+      const [{ data: profiles }, { data: presRows }] = await Promise.all([
+        supabase.from('profiles').select('id, connect_code, display_name, discord_username, main_character, top_characters, hide_connection_type, region, hide_region').in('id', senderIds),
+        supabase.from('presence_log').select('user_id, connection_type').in('user_id', senderIds),
+      ]);
       const profileMap: Record<string, any> = {};
       (profiles || []).forEach((p: any) => { profileMap[p.id] = p; });
+      const presMap: Record<string, any> = {};
+      (presRows || []).forEach((r: any) => { presMap[r.user_id] = r; });
 
-      const result = data.map((d: any) => ({
-        ...d,
-        connectCode: profileMap[d.sender_id]?.connect_code,
-        displayName: profileMap[d.sender_id]?.display_name,
-        discordUsername: profileMap[d.sender_id]?.discord_username,
-      }));
+      const result = data.map((d: any) => {
+        const p = profileMap[d.sender_id] || {};
+        const pres = presMap[d.sender_id] || {};
+        const slippiChars: any[] = Array.isArray(p.top_characters) ? p.top_characters : [];
+        const mainChar = p.main_character ?? slippiChars[0]?.characterId ?? null;
+        return {
+          ...d,
+          connectCode: p.connect_code,
+          displayName: p.display_name,
+          discordUsername: p.discord_username,
+          mainCharacter: mainChar,
+          connectionType: p.hide_connection_type ? null : (pres.connection_type || null),
+          region: p.hide_region ? null : (p.region || null),
+        };
+      });
       console.log(`[bench] invite:pending total=${(performance.now()-t0).toFixed(0)}ms rows=${data.length}`);
       return result;
     } catch { return []; }
@@ -570,19 +592,30 @@ export function registerIpcHandlers(
       if (!data || data.length === 0) return [];
 
       const receiverIds = data.map((d: any) => d.receiver_id);
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, connect_code, display_name, discord_username')
-        .in('id', receiverIds);
+      const [{ data: profiles }, { data: presRows }] = await Promise.all([
+        supabase.from('profiles').select('id, connect_code, display_name, discord_username, main_character, top_characters, hide_connection_type, region, hide_region').in('id', receiverIds),
+        supabase.from('presence_log').select('user_id, connection_type').in('user_id', receiverIds),
+      ]);
       const profileMap: Record<string, any> = {};
       (profiles || []).forEach((p: any) => { profileMap[p.id] = p; });
+      const presMap: Record<string, any> = {};
+      (presRows || []).forEach((r: any) => { presMap[r.user_id] = r; });
 
-      const result = data.map((d: any) => ({
-        ...d,
-        connectCode: profileMap[d.receiver_id]?.connect_code,
-        displayName: profileMap[d.receiver_id]?.display_name,
-        discordUsername: profileMap[d.receiver_id]?.discord_username,
-      }));
+      const result = data.map((d: any) => {
+        const p = profileMap[d.receiver_id] || {};
+        const pres = presMap[d.receiver_id] || {};
+        const slippiChars: any[] = Array.isArray(p.top_characters) ? p.top_characters : [];
+        const mainChar = p.main_character ?? slippiChars[0]?.characterId ?? null;
+        return {
+          ...d,
+          connectCode: p.connect_code,
+          displayName: p.display_name,
+          discordUsername: p.discord_username,
+          mainCharacter: mainChar,
+          connectionType: p.hide_connection_type ? null : (pres.connection_type || null),
+          region: p.hide_region ? null : (p.region || null),
+        };
+      });
       console.log(`[bench] invite:sent total=${(performance.now()-t0).toFixed(0)}ms rows=${data.length}`);
       return result;
     } catch { return []; }

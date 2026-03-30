@@ -33,6 +33,8 @@ interface IncomingRequest {
   rating: number | null;
   characterId: number | null;
   note?: string | null;
+  connectionType?: 'wifi' | 'ethernet' | null;
+  region?: string | null;
 }
 
 function SkeletonCard() {
@@ -63,8 +65,8 @@ export function Friends() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [inviteSent, setInviteSent] = useState<Record<string, string | true>>({});
   const [inviting, setInviting] = useState<string | null>(null);
-  const [playInvites, setPlayInvites] = useState<{ id: string; connectCode: string; displayName?: string; discordUsername?: string; created_at: string; status: string; myOpened?: boolean }[]>([]);
-  const [sentInvites, setSentInvites] = useState<{ id: string; connectCode: string; displayName?: string; discordUsername?: string; created_at: string; status: string; myOpened?: boolean }[]>([]);
+  const [playInvites, setPlayInvites] = useState<{ id: string; connectCode: string; displayName?: string; discordUsername?: string; created_at: string; status: string; myOpened?: boolean; mainCharacter?: number | null; connectionType?: 'wifi' | 'ethernet' | null; region?: string | null }[]>([]);
+  const [sentInvites, setSentInvites] = useState<{ id: string; connectCode: string; displayName?: string; discordUsername?: string; created_at: string; status: string; myOpened?: boolean; mainCharacter?: number | null; connectionType?: 'wifi' | 'ethernet' | null; region?: string | null }[]>([]);
   const [acceptingInvite, setAcceptingInvite] = useState<string | null>(null);
   const [dcStatus, setDcStatus] = useState<{ status: string; message: string; connectCode?: string } | null>(null);
   const [dcStarting, setDcStarting] = useState(false);
@@ -262,6 +264,9 @@ export function Friends() {
         created_at: d.created_at,
         status: d.status || 'pending',
         myOpened: !!d.receiver_opened,
+        mainCharacter: d.mainCharacter ?? null,
+        connectionType: d.connectionType ?? null,
+        region: d.region ?? null,
       }));
       setPlayInvites(invites);
     } catch {}
@@ -278,6 +283,9 @@ export function Friends() {
         created_at: d.created_at,
         status: d.status || 'pending',
         myOpened: !!d.sender_opened,
+        mainCharacter: d.mainCharacter ?? null,
+        connectionType: d.connectionType ?? null,
+        region: d.region ?? null,
       }));
       setSentInvites(invites);
     } catch {}
@@ -713,10 +721,15 @@ export function Friends() {
             }`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 min-w-0">
+                  {inv.mainCharacter != null && (
+                    <CharacterIcon characterId={inv.mainCharacter} size="sm" />
+                  )}
                   <span className="font-mono font-bold text-white text-sm">{inv.connectCode}</span>
                   {inv.displayName && (
                     <span className="text-xs text-gray-500 truncate">{inv.displayName}</span>
                   )}
+                  {inv.connectionType && <ConnectionTypeIcon type={inv.connectionType} />}
+                  {inv.region && <span className="text-[10px] text-gray-500">{inv.region}</span>}
                 </div>
                 {inv.status === 'accepted' ? (
                   <div className="flex items-center gap-2">
@@ -761,6 +774,9 @@ export function Friends() {
                   {inv.displayName && (
                     <span className="text-xs text-gray-500 truncate">{inv.displayName}</span>
                   )}
+                  {inv.mainCharacter != null && <CharacterIcon characterId={inv.mainCharacter} size="sm" />}
+                  {inv.connectionType && <ConnectionTypeIcon type={inv.connectionType} />}
+                  {inv.region && <span className="text-[10px] text-gray-600 truncate">{inv.region}</span>}
                 </div>
                 {inv.status === 'accepted' ? (
                   <div className="flex items-center gap-2">
@@ -892,7 +908,12 @@ export function Friends() {
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <span className="font-mono font-bold text-white text-sm">{req.connectCode}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-bold text-white text-sm">{req.connectCode}</span>
+                  {req.characterId != null && <CharacterIcon characterId={req.characterId} size="sm" />}
+                  {req.connectionType && <ConnectionTypeIcon type={req.connectionType} />}
+                  {req.region && <span className="text-[10px] text-gray-600 truncate">{req.region}</span>}
+                </div>
                 {(req.displayName || req.discordUsername) && (
                   <p className="text-xs text-gray-400 truncate">
                     {req.displayName || `@${req.discordUsername}`}
