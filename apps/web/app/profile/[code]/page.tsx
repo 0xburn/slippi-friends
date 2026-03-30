@@ -38,6 +38,7 @@ export default async function ProfilePage({ params }: { params: { code: string }
     );
   }
 
+  // DEPRECATED: slippi_cache — use player_ratings instead
   const { data: cache } = await supabase
     .from('slippi_cache')
     .select('*')

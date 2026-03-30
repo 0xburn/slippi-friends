@@ -48,6 +48,7 @@ export async function GET() {
       })
       .filter((c): c is string => !!c) ?? [];
 
+  // DEPRECATED: slippi_cache — use player_ratings instead
   let cacheByCode: Record<string, Record<string, unknown>> = {};
   if (codes.length > 0) {
     const { data: cacheRows } = await supabase

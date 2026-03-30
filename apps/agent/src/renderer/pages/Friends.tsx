@@ -6,6 +6,14 @@ import { RankBadge } from '../components/RankBadge';
 import { CharacterIcon } from '../components/CharacterIcon';
 import { CHARACTER_MAP, getCharacterImagePath, getCharacterShortName } from '../lib/characters';
 
+function DiscordIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
+    </svg>
+  );
+}
+
 interface Friend {
   id: string;
   friendId: string;
@@ -81,7 +89,7 @@ export function Friends() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'online' | 'in-game' | 'offline'>('all');
   const [myIdentity, setMyIdentity] = useState<{ connectCode: string; displayName: string } | null>(null);
   const [myUser, setMyUser] = useState<{ avatar_url?: string; discord_name?: string } | null>(null);
-  const [myProfile, setMyProfile] = useState<{ rating_ordinal?: number; wins?: number; losses?: number; region?: string | null; topCharacters?: { characterId: number; gameCount: number }[] } | null>(null);
+  const [myProfile, setMyProfile] = useState<{ rating_ordinal?: number; wins?: number; losses?: number; region?: string | null; topCharacters?: { characterId: number; gameCount: number }[]; discord_username?: string | null; discord_id?: string | null } | null>(null);
   const [myOpponentCode, setMyOpponentCode] = useState<string | null>(null);
   const [myCharacterId, setMyCharacterId] = useState<number | null>(null);
   const [myOppCharId, setMyOppCharId] = useState<number | null>(null);
@@ -105,7 +113,7 @@ export function Friends() {
 
   const [nudgeSent, setNudgeSent] = useState<Record<string, string>>({});
 
-  const HIDDEN_CHARACTERS = new Set([23]);
+  const HIDDEN_CHARACTERS = new Set<number>();
   const CHAR_OPTIONS = Object.keys(CHARACTER_MAP).map(Number).filter((id) => !HIDDEN_CHARACTERS.has(id)).sort((a, b) => CHARACTER_MAP[a].localeCompare(CHARACTER_MAP[b]));
 
   const STATUS_PRESETS = ['Down for friendlies', 'Ranked grind', 'Warming up', 'Quick session', 'Running sets', 'Will play anyone', 'Labbing tech', 'Need spacie practice', 'Need floatie practice'];
@@ -124,7 +132,7 @@ export function Friends() {
     window.api.getProfile().then((p: any) => {
       if (p) {
         const topChars = Array.isArray(p.top_characters) ? p.top_characters : [];
-        setMyProfile({ rating_ordinal: p.rating_ordinal, wins: p.wins, losses: p.losses, region: p.region ?? null, topCharacters: topChars });
+        setMyProfile({ rating_ordinal: p.rating_ordinal, wins: p.wins, losses: p.losses, region: p.region ?? null, topCharacters: topChars, discord_username: p.discord_username ?? null, discord_id: p.discord_id ?? null });
         setMyChosenMain(p.main_character ?? null);
         setMyChosenSecondary(p.secondary_character ?? null);
         const displayMain = p.main_character ?? topChars[0]?.characterId;
@@ -588,6 +596,18 @@ export function Friends() {
               <div className="flex items-center gap-2 mt-0.5">
                 {myIdentity.displayName && (
                   <span className="text-xs text-gray-500">{myIdentity.displayName}</span>
+                )}
+                {myProfile?.discord_username && (
+                  <button
+                    onClick={() => { if (myProfile?.discord_id) window.api.openDiscordProfile(myProfile.discord_id); }}
+                    className={`inline-flex items-center gap-1 min-w-0 rounded-md bg-[#5865F2]/10 px-1.5 py-0.5 transition-colors ${
+                      myProfile?.discord_id ? 'hover:bg-[#5865F2]/25 cursor-pointer' : 'cursor-default'
+                    }`}
+                    title={myProfile?.discord_id ? 'Open in Discord' : undefined}
+                  >
+                    <DiscordIcon className="w-3.5 h-3.5 text-[#5865F2] shrink-0" />
+                    <span className="text-xs font-medium text-[#5865F2] truncate">@{myProfile.discord_username}</span>
+                  </button>
                 )}
                 {myConnectionType && !hideConnectionType && (
                   <ConnectionTypeIcon type={myConnectionType} />

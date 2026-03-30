@@ -48,6 +48,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
+    // DEPRECATED: slippi_cache — use player_ratings instead
     const { data: cached } = await supabase
       .from('slippi_cache')
       .select('*')
@@ -99,6 +100,7 @@ serve(async (req) => {
       fetched_at: new Date().toISOString(),
     };
 
+    // DEPRECATED: slippi_cache — use player_ratings instead
     await supabase.from('slippi_cache').upsert(record);
 
     return new Response(

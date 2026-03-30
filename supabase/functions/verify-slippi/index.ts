@@ -91,7 +91,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           verified: false,
-          error: 'This account has been suspended. Contact lucky7smelee@gmail.com to appeal.',
+          error: 'This account has been suspended. Contact team@lucky7s.gg to appeal.',
         }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -109,7 +109,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           verified: false,
-          error: 'This connect code is already claimed by another account. If this is your code, email lucky7smelee@gmail.com to recover your profile.',
+          error: 'This connect code is already claimed by another account. If this is your code, email team@lucky7s.gg to recover your profile.',
         }),
         { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -124,6 +124,7 @@ serve(async (req) => {
       verified_at: new Date().toISOString(),
     });
 
+    // DEPRECATED: slippi_cache — use player_ratings instead
     if (user.rankedNetplayProfile) {
       const r = user.rankedNetplayProfile;
       await supabase.from('slippi_cache').upsert({

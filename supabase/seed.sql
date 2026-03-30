@@ -1,3 +1,4 @@
+-- DEPRECATED: slippi_cache — use player_ratings instead
 INSERT INTO slippi_cache (connect_code, display_name, slippi_uid, rating_ordinal, wins, losses, characters, fetched_at)
 VALUES
   ('MANG#0', 'Mang0', 'test-uid-mango', 2350.50, 450, 200, '[{"character": 2, "gameCount": 500}, {"character": 20, "gameCount": 150}]', NOW()),

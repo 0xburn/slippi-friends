@@ -78,6 +78,7 @@ export default function FriendsPage() {
       return;
     }
     void (async () => {
+      // DEPRECATED: slippi_cache — use player_ratings instead
       const { data } = await supabase.from('slippi_cache').select('connect_code, rating_ordinal, characters').in('connect_code', codes);
       const r: Record<string, number | null> = {};
       const ch: Record<string, number | null> = {};

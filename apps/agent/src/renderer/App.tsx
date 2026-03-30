@@ -300,7 +300,7 @@ export function App() {
             </p>
             <p className="text-xs text-gray-400 leading-relaxed">
               Your profile has been unlinked and your account has been flagged. If
-              this is an error, contact <span className="text-white font-medium">lucky7smelee@gmail.com</span> to appeal.
+              this is an error, contact <span className="text-white font-medium">team@lucky7s.gg</span> to appeal.
             </p>
           </div>
           <button
@@ -330,7 +330,7 @@ export function App() {
             </p>
             <p className="text-xs text-gray-400 leading-relaxed">
               If this is your connect code, contact{' '}
-              <span className="text-white font-medium">lucky7smelee@gmail.com</span> to
+              <span className="text-white font-medium">team@lucky7s.gg</span> to
               resolve the conflict.
             </p>
           </div>
@@ -366,7 +366,7 @@ export function App() {
             )}
             <p className="text-xs text-gray-400 leading-relaxed">
               If you believe this is an error, contact{' '}
-              <span className="text-white font-medium">lucky7smelee@gmail.com</span> to appeal.
+              <span className="text-white font-medium">team@lucky7s.gg</span> to appeal.
             </p>
           </div>
         </div>

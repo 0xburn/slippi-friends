@@ -257,16 +257,24 @@ export function registerIpcHandlers(
     try {
       const identity = getIdentity();
       if (!identity) return null;
-      const [{ data: cache }, { data: profile }] = await Promise.all([
-        supabase.from('slippi_cache').select('*').eq('connect_code', identity.connectCode).single(),
-        supabase.from('profiles').select('region, top_characters, main_character, secondary_character').eq('connect_code', identity.connectCode).single(),
+      const [{ data: profile }, { data: ratingRow }] = await Promise.all([
+        supabase.from('profiles').select('region, top_characters, main_character, secondary_character, discord_username, discord_id').eq('connect_code', identity.connectCode).single(),
+        supabase.from('player_ratings').select('*').eq('connect_code', identity.connectCode).single(),
       ]);
       return {
-        ...cache,
+        connect_code: identity.connectCode,
+        display_name: identity.displayName,
+        rating_ordinal: ratingRow?.effective_rating ?? null,
+        current_rating: ratingRow?.current_rating ?? null,
+        peak_past_rating: ratingRow?.peak_past_rating ?? null,
+        wins: ratingRow?.current_wins ?? 0,
+        losses: ratingRow?.current_losses ?? 0,
         region: profile?.region ?? null,
         top_characters: profile?.top_characters ?? [],
         main_character: profile?.main_character ?? null,
         secondary_character: profile?.secondary_character ?? null,
+        discord_username: profile?.discord_username ?? null,
+        discord_id: profile?.discord_id ?? null,
       };
     } catch { return null; }
   });
@@ -288,6 +296,7 @@ export function registerIpcHandlers(
         .map((f: any) => (f.profiles as any)?.connect_code || f.friend_connect_code)
         .filter(Boolean);
 
+      // DEPRECATED: slippi_cache — use player_ratings instead
       let cacheMap: Record<string, any> = {};
       if (codes.length > 0) {
         const { data: cached } = await supabase.from('slippi_cache').select('*').in('connect_code', codes);
@@ -355,6 +364,7 @@ export function registerIpcHandlers(
 
       const codes = data.map((f: any) => (f.profiles as any)?.connect_code).filter(Boolean);
       const senderIds = data.map((f: any) => f.user_id).filter(Boolean);
+      // DEPRECATED: slippi_cache — use player_ratings instead
       let cacheMap: Record<string, any> = {};
       let presenceMap: Record<string, any> = {};
       if (codes.length > 0) {

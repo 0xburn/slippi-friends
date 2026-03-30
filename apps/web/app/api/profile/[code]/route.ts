@@ -17,6 +17,7 @@ export async function GET(
       )
       .eq('connect_code', connectCode)
       .maybeSingle(),
+    // DEPRECATED: slippi_cache — use player_ratings instead
     supabase.from('slippi_cache').select('*').eq('connect_code', connectCode).maybeSingle(),
   ]);
 

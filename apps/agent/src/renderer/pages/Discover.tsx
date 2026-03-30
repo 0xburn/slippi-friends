@@ -103,7 +103,7 @@ function EloFilter({ selected, onToggle, onClear }: {
   );
 }
 
-const HIDDEN_CHARACTERS = new Set([23]);
+const HIDDEN_CHARACTERS = new Set<number>();
 const ALL_CHARACTER_IDS = Object.keys(CHARACTER_MAP).map(Number)
   .filter((id) => !HIDDEN_CHARACTERS.has(id))
   .sort((a, b) => CHARACTER_MAP[a].localeCompare(CHARACTER_MAP[b]));
