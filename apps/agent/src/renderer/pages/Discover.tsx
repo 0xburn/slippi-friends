@@ -507,6 +507,13 @@ export function Discover() {
                         >
                           Open Melee
                         </button>
+                        <button
+                          onClick={() => handleDeclineInvite(inv.id)}
+                          className="shrink-0 w-7 h-7 rounded-lg bg-red-500/10 flex items-center justify-center text-red-400 hover:bg-red-500/20 transition-colors"
+                          title="Dismiss"
+                        >
+                          ✕
+                        </button>
                       </div>
                       <span className="text-xs text-gray-500">(connect code will be pre-filled in Direct mode!)</span>
                     </div>
@@ -561,6 +568,13 @@ export function Discover() {
                           className="shrink-0 rounded-lg bg-blue-500 px-4 py-2 text-sm font-bold text-white hover:bg-blue-600 transition-colors disabled:opacity-40"
                         >
                           Open Melee
+                        </button>
+                        <button
+                          onClick={() => handleCancelSentInvite(inv.id)}
+                          className="shrink-0 w-7 h-7 rounded-lg bg-red-500/10 flex items-center justify-center text-red-400 hover:bg-red-500/20 transition-colors"
+                          title="Dismiss"
+                        >
+                          ✕
                         </button>
                       </div>
                       <span className="text-xs text-gray-500">(connect code will be pre-filled in Direct mode!)</span>
