@@ -206,20 +206,43 @@ export function registerIpcHandlers(
   }, 5_000);
 
   ipcMain.handle('auth:start', async () => {
+    const onLocalAuth = async () => {
+      const user = await getCurrentUser();
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('auth:changed', user);
+      }
+    };
+
     if (process.platform === 'linux') {
       const authDone = startLocalAuthServer();
       const url = await startAuthFlow();
-      authDone.then(async () => {
-        const user = await getCurrentUser();
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('auth:changed', user);
-        }
-      }).catch((err) => console.error('[auth] Linux local auth failed:', err));
+      authDone.then(onLocalAuth).catch((err) => console.error('[auth] Linux local auth failed:', err));
       return url;
     }
+
+    if (process.platform === 'win32') {
+      let deepLinkResolved = false;
+      const markResolved = () => { deepLinkResolved = true; };
+      ipcMain.once('auth:deeplink-resolved', markResolved);
+
+      const url = await startAuthFlow();
+
+      setTimeout(async () => {
+        ipcMain.removeListener('auth:deeplink-resolved', markResolved);
+        if (deepLinkResolved) return;
+        console.log('[auth] Deep link did not return in time, falling back to localhost callback');
+        const authDone = startLocalAuthServer();
+        await startAuthFlow(true);
+        authDone.then(onLocalAuth).catch((err) => console.error('[auth] Windows fallback auth failed:', err));
+      }, 8_000);
+
+      return url;
+    }
+
     return startAuthFlow();
   });
   ipcMain.handle('auth:callback', async (_e, url: string) => {
+    ipcMain.emit('auth:deeplink-resolved');
     await handleAuthCallback(url);
     const user = await getCurrentUser();
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('auth:changed', user);

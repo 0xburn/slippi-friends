@@ -148,8 +148,8 @@ async function openBrowser(url: string): Promise<void> {
   } catch {}
 }
 
-export async function startAuthFlow(): Promise<string> {
-  const useLocal = process.platform === 'linux';
+export async function startAuthFlow(forceLocal = false): Promise<string> {
+  const useLocal = forceLocal || process.platform === 'linux';
   const url = getAuthorizeUrl(useLocal);
   console.log('startAuthFlow opening:', url, useLocal ? '(localhost callback)' : '(protocol handler)');
   await openBrowser(url);
