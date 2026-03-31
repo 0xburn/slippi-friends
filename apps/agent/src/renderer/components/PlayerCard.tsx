@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { ConnectionTypeIcon } from './ConnectionTypeIcon';
 import { OnlineIndicator } from './OnlineIndicator';
 import { RankBadge } from './RankBadge';
@@ -50,7 +50,34 @@ interface PlayerCardProps {
   onUnsend?: () => void;
 }
 
-export function PlayerCard({ player, showStatus = true, expandable = true, onClick, onBlock, onRemove, onInvite, inviteDisabled, inviteState, nudgeOptions, onNudge, nudgeState, onAdd, addDisabled, addState, removeLabel, onUnsend }: PlayerCardProps) {
+function playerCardAreEqual(prev: PlayerCardProps, next: PlayerCardProps): boolean {
+  const pp = prev.player, np = next.player;
+  return pp.connectCode === np.connectCode &&
+    pp.status === np.status &&
+    pp.currentCharacter === np.currentCharacter &&
+    pp.opponentCode === np.opponentCode &&
+    pp.playingSince === np.playingSince &&
+    pp.rating === np.rating &&
+    pp.lookingToPlay === np.lookingToPlay &&
+    pp.statusPreset === np.statusPreset &&
+    pp.connectionType === np.connectionType &&
+    pp.region === np.region &&
+    pp.displayName === np.displayName &&
+    pp.discordUsername === np.discordUsername &&
+    pp.avatarUrl === np.avatarUrl &&
+    prev.showStatus === next.showStatus &&
+    prev.addState === next.addState &&
+    prev.inviteDisabled === next.inviteDisabled &&
+    prev.inviteState === next.inviteState &&
+    prev.nudgeState === next.nudgeState &&
+    !!prev.onAdd === !!next.onAdd &&
+    !!prev.onInvite === !!next.onInvite &&
+    !!prev.onBlock === !!next.onBlock &&
+    !!prev.onRemove === !!next.onRemove &&
+    !!prev.onUnsend === !!next.onUnsend;
+}
+
+export const PlayerCard = memo(function PlayerCard({ player, showStatus = true, expandable = true, onClick, onBlock, onRemove, onInvite, inviteDisabled, inviteState, nudgeOptions, onNudge, nudgeState, onAdd, addDisabled, addState, removeLabel, onUnsend }: PlayerCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [nudgePickerOpen, setNudgePickerOpen] = useState(false);
   const hasAvatar = !!player.avatarUrl;
@@ -254,4 +281,4 @@ export function PlayerCard({ player, showStatus = true, expandable = true, onCli
       )}
     </div>
   );
-}
+}, playerCardAreEqual);

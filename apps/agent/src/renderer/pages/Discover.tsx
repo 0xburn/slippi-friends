@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PlayerCard } from '../components/PlayerCard';
 import { CharacterIcon } from '../components/CharacterIcon';
 import { ConnectionTypeIcon } from '../components/ConnectionTypeIcon';
@@ -248,8 +248,27 @@ export function Discover() {
         minElo = Math.min(...indices.map((i) => RANK_TIERS[i].min));
         maxElo = Math.max(...indices.map((i) => RANK_TIERS[i].max));
       }
-      const data = await window.api.discoverPlayers({ characterIds, minElo, maxElo });
-      setPlayers(data || []);
+      const data: DiscoverPlayer[] = (await window.api.discoverPlayers({ characterIds, minElo, maxElo })) || [];
+      if (resetVisible) {
+        setPlayers(data);
+      } else {
+        setPlayers((prev) => {
+          if (prev.length === 0) return data;
+          const newMap = new Map(data.map((p) => [p.userId, p]));
+          const merged: DiscoverPlayer[] = [];
+          for (const p of prev) {
+            const updated = newMap.get(p.userId);
+            if (updated) {
+              merged.push(updated);
+              newMap.delete(p.userId);
+            }
+          }
+          for (const p of data) {
+            if (newMap.has(p.userId)) merged.push(p);
+          }
+          return merged;
+        });
+      }
     } catch {}
     setLoading(false);
     setLastRefresh(Date.now());
@@ -271,7 +290,10 @@ export function Discover() {
         connectionType: d.connectionType ?? null,
         region: d.region ?? null,
       }));
-      setSentInvites(visible);
+      setSentInvites((prev) => {
+        if (prev.length === visible.length && prev.every((p, i) => p.id === visible[i].id && p.status === visible[i].status)) return prev;
+        return visible;
+      });
       const activeCodes = new Set(visible.map((v) => v.connectCode));
       setInviteSent((prev) => {
         const next: Record<string, string | true> = {};
@@ -286,7 +308,7 @@ export function Discover() {
   async function loadPlayInvites() {
     try {
       const data = await window.api.getPendingInvites();
-      setPlayInvites((data || []).filter((d: any) => !d.receiver_opened || d.status === 'pending').slice(0, 10).map((d: any) => ({
+      const visible = (data || []).filter((d: any) => !d.receiver_opened || d.status === 'pending').slice(0, 10).map((d: any) => ({
         id: d.id,
         connectCode: d.connectCode || '',
         displayName: d.displayName,
@@ -296,7 +318,11 @@ export function Discover() {
         mainCharacter: d.mainCharacter ?? null,
         connectionType: d.connectionType ?? null,
         region: d.region ?? null,
-      })));
+      }));
+      setPlayInvites((prev) => {
+        if (prev.length === visible.length && prev.every((p, i) => p.id === visible[i].id && p.status === visible[i].status)) return prev;
+        return visible;
+      });
     } catch {}
   }
 
@@ -369,10 +395,10 @@ export function Discover() {
     return () => clearInterval(fastPoll);
   }, [hasActiveInvites]);
 
-  function handleAddClick(connectCode: string) {
+  const handleAddClick = useCallback((connectCode: string) => {
     setAddNote(null);
     setAddNoteModal(connectCode);
-  }
+  }, []);
 
   async function handleAddConfirm() {
     const code = addNoteModal;
@@ -387,7 +413,7 @@ export function Discover() {
     setAdding(null);
   }
 
-  async function handleInvite(connectCode: string) {
+  const handleInvite = useCallback(async (connectCode: string) => {
     setInviting(connectCode);
     const result = await window.api.sendPlayInvite(connectCode);
     if (result.error) {
@@ -397,17 +423,17 @@ export function Discover() {
       await loadSentInvites();
     }
     setInviting(null);
-  }
+  }, []);
 
-  async function handleCopy(code: string) {
+  const handleCopy = useCallback(async (code: string) => {
     await window.api.copyToClipboard(code);
-  }
+  }, []);
 
-  async function handleBlock(connectCode: string) {
+  const handleBlock = useCallback(async (connectCode: string) => {
     setConfirmBlock(null);
     await window.api.blockUser(connectCode);
     setPlayers((prev) => prev.filter((p) => p.connectCode !== connectCode));
-  }
+  }, []);
 
   function toggleChar(id: number) {
     setCharFilter((prev) => {
@@ -446,7 +472,7 @@ export function Discover() {
   const ago = Math.round((Date.now() - lastRefresh) / 1000);
   const refreshLabel = ago < 5 ? 'just now' : `${ago}s ago`;
 
-  const filtered = search
+  const filtered = useMemo(() => search
     ? players.filter((p) => {
         const q = search.toLowerCase();
         return (
@@ -455,7 +481,7 @@ export function Discover() {
           p.discordUsername?.toLowerCase().includes(q)
         );
       })
-    : players;
+    : players, [players, search]);
 
   return (
     <div className="space-y-6 max-w-4xl">
