@@ -62,6 +62,8 @@ const api = {
   isLookingToPlay: () => ipcRenderer.invoke('presence:isLookingToPlay') as Promise<boolean>,
   setStatusPreset: (preset: string | null) => ipcRenderer.invoke('presence:setStatusPreset', preset) as Promise<string | null>,
   getStatusPreset: () => ipcRenderer.invoke('presence:getStatusPreset') as Promise<string | null>,
+  setLfgExpiry: (minutes: number | null) => ipcRenderer.invoke('presence:setLfgExpiry', minutes) as Promise<void>,
+  getLfgExpiry: () => ipcRenderer.invoke('presence:getLfgExpiry') as Promise<number | null>,
   onPresenceUpdate: (cb: (users: any[]) => void): Unsubscribe => onEvent('presence:updated', cb),
   onLocalStatus: (cb: (info: any) => void): Unsubscribe => onEvent('presence:localStatus', cb),
 

@@ -6,7 +6,7 @@ import { getDirectConnectService } from './direct-connect';
 import { getIdentity, verifyIdentity } from './identity';
 import { getCachedGeo } from './geo-cache';
 import { resolvePresenceRow } from './presence-logic';
-import { getConnectionType, getCurrentStatus, getOnlineUsers, getPresenceStats, getStatusPreset, isLookingToPlay, onLocalStatusChange, onPresenceSync, setHideConnectionType, setHideOnlineStatus, setStatusPreset, toggleLookingToPlay } from './presence';
+import { getConnectionType, getCurrentStatus, getLfgExpiry, getOnlineUsers, getPresenceStats, getStatusPreset, isLookingToPlay, onLocalStatusChange, onPresenceSync, setHideConnectionType, setHideOnlineStatus, setLfgExpiry, setStatusPreset, toggleLookingToPlay } from './presence';
 import { showTestNotification } from './notifications';
 import { getSettings, isSetupComplete, updateSettings, type AgentSettings } from './settings';
 import { supabase } from './supabase';
@@ -1007,6 +1007,8 @@ export function registerIpcHandlers(
   ipcMain.handle('presence:isLookingToPlay', () => isLookingToPlay());
   ipcMain.handle('presence:setStatusPreset', (_e, preset: string | null) => setStatusPreset(preset));
   ipcMain.handle('presence:getStatusPreset', () => getStatusPreset());
+  ipcMain.handle('presence:setLfgExpiry', (_e, minutes: number | null) => setLfgExpiry(minutes));
+  ipcMain.handle('presence:getLfgExpiry', () => getLfgExpiry());
 
   ipcMain.handle('presence:friendStatuses', async () => {
     const t0 = performance.now();

@@ -110,6 +110,7 @@ export function Friends() {
   const [copied, setCopied] = useState(false);
   const [myStatusPreset, setMyStatusPreset] = useState<string | null>(null);
   const [statusPickerOpen, setStatusPickerOpen] = useState(false);
+  const [lfgExpiryMinutes, setLfgExpiryMinutes] = useState<number | null>(60);
   const [disableStatuses, setDisableStatuses] = useState(false);
   const [disableNudges, setDisableNudges] = useState(false);
   const [visibleCount, setVisibleCount] = useState(15);
@@ -123,6 +124,12 @@ export function Friends() {
   const CHAR_OPTIONS = Object.keys(CHARACTER_MAP).map(Number).filter((id) => !HIDDEN_CHARACTERS.has(id)).sort((a, b) => CHARACTER_MAP[a].localeCompare(CHARACTER_MAP[b]));
 
   const STATUS_PRESETS = ['Down for friendlies', 'Ranked grind', 'Warming up', 'Quick session', 'Running sets', 'Will play anyone', 'Labbing tech', 'Need spacie practice', 'Need floatie practice'];
+  const LFG_EXPIRY_OPTIONS: { label: string; value: number | null }[] = [
+    { label: '30m', value: 30 },
+    { label: '1h', value: 60 },
+    { label: '2h', value: 120 },
+    { label: '∞', value: null },
+  ];
   const NUDGE_OPTIONS = ['GGs', 'one more', 'gtg', 'you play so hot and cool', 'that was sick', "you're cracked", "i'm cracked", "i'm so high", 'check discord', 'hi'];
   const DECLINE_NUDGE_OPTIONS = ['Down in 5-15 min', 'Sorry, another time', 'Looking for different matchup', 'Message me on Discord'];
 
@@ -151,6 +158,7 @@ export function Friends() {
     });
     window.api.isLookingToPlay().then((v: boolean) => setLfg(v));
     window.api.getStatusPreset().then((v: string | null) => setMyStatusPreset(v));
+    window.api.getLfgExpiry().then((v: number | null) => setLfgExpiryMinutes(v));
     window.api.getSettings().then((s: any) => {
       setDisableStatuses(!!s.disableStatuses);
       setDisableNudges(!!s.disableNudges);
@@ -663,66 +671,87 @@ export function Friends() {
               </div>
             </div>
             <div className="shrink-0 flex items-center gap-2 relative">
-              {!disableStatuses && (
-                <div className="relative">
-                  <button
-                    onClick={() => setStatusPickerOpen(!statusPickerOpen)}
-                    disabled={lfgToggling}
-                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                      myStatusPreset
+              <div className="relative">
+                <button
+                  onClick={() => setStatusPickerOpen(!statusPickerOpen)}
+                  disabled={lfgToggling}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                    myStatusPreset
+                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30'
+                      : lfg
                         ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30'
-                        : lfg
-                          ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30'
-                          : 'border border-[#2a2a2a] bg-[#1a1a1a] text-gray-400 hover:text-white hover:bg-[#222]'
-                    }`}
-                  >
-                    {myStatusPreset || (lfg ? 'Looking to play!' : 'Set status')}
-                  </button>
-                  {statusPickerOpen && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setStatusPickerOpen(false)} />
-                      <div className="absolute right-0 top-full mt-1 z-50 rounded-lg border border-[#2a2a2a] bg-[#141414] shadow-2xl py-1 min-w-[180px]">
-                        {STATUS_PRESETS.map((preset) => (
+                        : 'border border-[#2a2a2a] bg-[#1a1a1a] text-gray-400 hover:text-white hover:bg-[#222]'
+                  }`}
+                >
+                  {myStatusPreset || (lfg ? '🎮 Looking to play!' : '🎮 Looking to play?')}
+                </button>
+                {statusPickerOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setStatusPickerOpen(false)} />
+                    <div className="absolute right-0 top-full mt-1 z-50 rounded-lg border border-[#2a2a2a] bg-[#141414] shadow-2xl py-1 min-w-[180px]">
+                      {!disableStatuses && STATUS_PRESETS.map((preset) => (
+                        <button
+                          key={preset}
+                          onClick={() => handleSetStatusPreset(preset)}
+                          className={`w-full text-left px-3 py-2 text-xs transition-colors ${
+                            myStatusPreset === preset
+                              ? 'text-amber-400 bg-amber-500/10'
+                              : 'text-gray-300 hover:text-white hover:bg-white/5'
+                          }`}
+                        >
+                          {preset}
+                          {myStatusPreset === preset && <span className="ml-2 text-[10px] text-amber-500/60">(active)</span>}
+                        </button>
+                      ))}
+                      {!disableStatuses && !lfg && !myStatusPreset && (
+                        <>
+                          <div className="border-t border-[#2a2a2a] my-1" />
                           <button
-                            key={preset}
-                            onClick={() => handleSetStatusPreset(preset)}
-                            className={`w-full text-left px-3 py-2 text-xs transition-colors ${
-                              myStatusPreset === preset
-                                ? 'text-amber-400 bg-amber-500/10'
-                                : 'text-gray-300 hover:text-white hover:bg-white/5'
-                            }`}
+                            onClick={() => { handleToggleLfg(); setStatusPickerOpen(false); }}
+                            className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
                           >
-                            {preset}
-                            {myStatusPreset === preset && <span className="ml-2 text-[10px] text-amber-500/60">(active)</span>}
+                            🎮 Just looking to play
                           </button>
-                        ))}
-                        {(lfg || myStatusPreset) && (
-                          <>
-                            <div className="border-t border-[#2a2a2a] my-1" />
+                        </>
+                      )}
+                      <div className="border-t border-[#2a2a2a] my-1" />
+                      <div className="px-3 py-2 flex items-center gap-2">
+                        <span className="text-[10px] text-gray-500 whitespace-nowrap">Expire after</span>
+                        <div className="flex gap-1">
+                          {LFG_EXPIRY_OPTIONS.map((opt) => (
                             <button
-                              onClick={() => handleSetStatusPreset(null)}
-                              className="w-full text-left px-3 py-2 text-xs text-gray-500 hover:text-gray-300 hover:bg-white/5 transition-colors"
+                              key={opt.label}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setLfgExpiryMinutes(opt.value);
+                                window.api.setLfgExpiry(opt.value);
+                              }}
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                                lfgExpiryMinutes === opt.value
+                                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                                  : 'text-gray-500 hover:text-gray-300 border border-[#2a2a2a] hover:border-[#3a3a3a]'
+                              }`}
                             >
-                              Clear status
+                              {opt.label}
                             </button>
-                          </>
-                        )}
+                          ))}
+                        </div>
                       </div>
-                    </>
-                  )}
-                </div>
-              )}
-              <button
-                onClick={handleToggleLfg}
-                disabled={lfgToggling}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                  lfg
-                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30'
-                    : 'border border-[#2a2a2a] bg-[#1a1a1a] text-gray-400 hover:text-white hover:bg-[#222]'
-                }`}
-              >
-                {lfg ? '🎮' : '🎮 Looking to play?'}
-              </button>
+                      {(lfg || myStatusPreset) && (
+                        <>
+                          <div className="border-t border-[#2a2a2a] my-1" />
+                          <button
+                            onClick={() => handleSetStatusPreset(null)}
+                            className="w-full text-left px-3 py-2 text-xs text-gray-500 hover:text-gray-300 hover:bg-white/5 transition-colors"
+                          >
+                            Clear status
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
             <div className="shrink-0 relative">
               <button

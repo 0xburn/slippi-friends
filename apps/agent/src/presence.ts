@@ -153,7 +153,7 @@ let lookingToPlay = false;
 let lookingToPlaySince: string | null = null;
 let statusPreset: string | null = null;
 let statusPresetSince: string | null = null;
-const LFG_EXPIRY_MS = 60 * 60 * 1000;
+let lfgExpiryMinutes: number | null = 60;
 
 let throttleInGame = true;
 type GameActiveCallback = (inGame: boolean) => void;
@@ -218,14 +218,24 @@ export function getPresenceStats() {
 
 export function isLookingToPlay(): boolean {
   if (!lookingToPlay) return false;
-  if (lookingToPlaySince && Date.now() - new Date(lookingToPlaySince).getTime() > LFG_EXPIRY_MS) {
-    lookingToPlay = false;
-    lookingToPlaySince = null;
-    statusPreset = null;
-    statusPresetSince = null;
-    return false;
+  if (lfgExpiryMinutes != null && lookingToPlaySince) {
+    if (Date.now() - new Date(lookingToPlaySince).getTime() > lfgExpiryMinutes * 60_000) {
+      lookingToPlay = false;
+      lookingToPlaySince = null;
+      statusPreset = null;
+      statusPresetSince = null;
+      return false;
+    }
   }
   return true;
+}
+
+export function setLfgExpiry(minutes: number | null): void {
+  lfgExpiryMinutes = minutes;
+}
+
+export function getLfgExpiry(): number | null {
+  return lfgExpiryMinutes;
 }
 
 export async function toggleLookingToPlay(): Promise<boolean> {
@@ -617,8 +627,8 @@ export async function startPresenceLoop(
 
     const tick = async () => {
       try {
-        if (lookingToPlay && lookingToPlaySince &&
-            Date.now() - new Date(lookingToPlaySince).getTime() > LFG_EXPIRY_MS) {
+        if (lookingToPlay && lookingToPlaySince && lfgExpiryMinutes != null &&
+            Date.now() - new Date(lookingToPlaySince).getTime() > lfgExpiryMinutes * 60_000) {
           lookingToPlay = false;
           lookingToPlaySince = null;
           statusPreset = null;
