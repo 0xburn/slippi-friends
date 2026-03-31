@@ -1195,7 +1195,7 @@ export function registerIpcHandlers(
     try { return await discoverInFlight; } finally { discoverInFlight = null; }
   });
 
-  const VALID_NUDGE_MESSAGES = ['GGs', 'one more', 'gtg', 'you play so hot and cool', 'that was sick', "you're cracked", "i'm cracked", "i'm so high", 'check discord', 'hi'];
+  const VALID_NUDGE_MESSAGES = ['GGs', 'one more', 'gtg', 'you play so hot and cool', 'that was sick', "you're cracked", "i'm cracked", "i'm so high", 'check discord', 'hi', 'Down in 5-15 min', 'Sorry, another time', 'Looking for different matchup', 'Message me on Discord'];
 
   ipcMain.handle('nudge:send', async (_e, receiverConnectCode: string, message: string) => {
     try {

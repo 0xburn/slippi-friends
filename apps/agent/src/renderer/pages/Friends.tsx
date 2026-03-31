@@ -115,12 +115,16 @@ export function Friends() {
   const [visibleCount, setVisibleCount] = useState(15);
 
   const [nudgeSent, setNudgeSent] = useState<Record<string, string>>({});
+  const [declineModal, setDeclineModal] = useState<{ id: string; connectCode: string } | null>(null);
+  const [declineNudgeChoice, setDeclineNudgeChoice] = useState<string | null>(null);
+  const [decliningInvite, setDecliningInvite] = useState(false);
 
   const HIDDEN_CHARACTERS = new Set<number>();
   const CHAR_OPTIONS = Object.keys(CHARACTER_MAP).map(Number).filter((id) => !HIDDEN_CHARACTERS.has(id)).sort((a, b) => CHARACTER_MAP[a].localeCompare(CHARACTER_MAP[b]));
 
   const STATUS_PRESETS = ['Down for friendlies', 'Ranked grind', 'Warming up', 'Quick session', 'Running sets', 'Will play anyone', 'Labbing tech', 'Need spacie practice', 'Need floatie practice'];
   const NUDGE_OPTIONS = ['GGs', 'one more', 'gtg', 'you play so hot and cool', 'that was sick', "you're cracked", "i'm cracked", "i'm so high", 'check discord', 'hi'];
+  const DECLINE_NUDGE_OPTIONS = ['Down in 5-15 min', 'Sorry, another time', 'Looking for different matchup', 'Message me on Discord'];
 
   useEffect(() => {
     window.api.getIdentity().then((id) => {
@@ -512,6 +516,19 @@ export function Friends() {
     }), 3000);
   }
 
+  async function handleDeclineInvite(withNudge: boolean) {
+    if (!declineModal) return;
+    setDecliningInvite(true);
+    if (withNudge && declineNudgeChoice) {
+      await window.api.sendNudge(declineModal.connectCode, declineNudgeChoice);
+    }
+    await window.api.dismissInvite(declineModal.id);
+    await loadPlayInvites();
+    setDeclineModal(null);
+    setDeclineNudgeChoice(null);
+    setDecliningInvite(false);
+  }
+
   async function handleDirectConnect(connectCode: string, inviteId?: string) {
     if (inviteId) {
       await window.api.completeInvite(inviteId);
@@ -881,7 +898,7 @@ export function Friends() {
                       {acceptingInvite === inv.id ? '...' : 'Accept'}
                     </button>
                     <button
-                      onClick={() => { window.api.dismissInvite(inv.id); loadPlayInvites(); }}
+                      onClick={() => { setDeclineNudgeChoice(null); setDeclineModal({ id: inv.id, connectCode: inv.connectCode }); }}
                       className="shrink-0 rounded-lg bg-red-500/10 px-2.5 py-1.5 text-xs text-red-400 hover:bg-red-500/20 transition-colors"
                     >
                       Decline
@@ -1215,6 +1232,49 @@ export function Friends() {
                   className="flex-1 rounded-lg bg-[#21BA45] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#1ea33e] transition-colors"
                 >
                   {addNote ? 'Send with note' : 'Send without note'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {declineModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => { setDeclineModal(null); setDeclineNudgeChoice(null); }}>
+            <div className="rounded-2xl border border-[#2a2a2a] bg-[#141414] p-6 w-[360px] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <p className="text-sm text-white font-semibold text-center">
+                Decline invite from <span className="font-mono text-amber-400">{declineModal.connectCode}</span>
+              </p>
+              <p className="text-xs text-gray-400 text-center mt-2 leading-relaxed">
+                Want to send a quick nudge with the decline? They'll see it in their GGs tab.
+              </p>
+              <div className="flex flex-wrap gap-2 mt-4 justify-center">
+                {DECLINE_NUDGE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt}
+                    onClick={() => setDeclineNudgeChoice(declineNudgeChoice === opt ? null : opt)}
+                    className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
+                      declineNudgeChoice === opt
+                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                        : 'bg-[#1a1a1a] text-gray-400 border border-[#2a2a2a] hover:border-gray-500'
+                    }`}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-3 mt-5">
+                <button
+                  onClick={() => { setDeclineModal(null); setDeclineNudgeChoice(null); }}
+                  className="flex-1 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] px-4 py-2.5 text-sm font-medium text-gray-400 hover:text-white hover:bg-[#222] transition-colors"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={() => handleDeclineInvite(!!declineNudgeChoice)}
+                  disabled={decliningInvite}
+                  className="flex-1 rounded-lg bg-red-500/20 px-4 py-2.5 text-sm font-medium text-red-400 hover:bg-red-500/30 transition-colors disabled:opacity-50"
+                >
+                  {decliningInvite ? '...' : declineNudgeChoice ? 'Decline with nudge' : 'Decline without nudge'}
                 </button>
               </div>
             </div>
