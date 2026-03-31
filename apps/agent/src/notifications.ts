@@ -4,6 +4,7 @@ import { getCurrentStatus } from './presence';
 
 const NOTIF_COOLDOWN_MS = 60_000;
 const recentFriendNotifs = new Map<string, number>();
+const recentNudgeNotifs = new Map<string, number>();
 
 function playNotificationSound(): void {
   try {
@@ -96,6 +97,12 @@ export function showNudgeNotification(
 ): void {
   try {
     if (!Notification.isSupported()) return;
+    const key = `${fromCode}:${message}`;
+    const now = Date.now();
+    const lastShown = recentNudgeNotifs.get(key);
+    if (lastShown && now - lastShown < NOTIF_COOLDOWN_MS) return;
+    recentNudgeNotifs.set(key, now);
+
     const suppress = shouldSuppressToast();
     if (!suppress) {
       const n = new Notification({

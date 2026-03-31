@@ -327,6 +327,8 @@ async function pollNudges(userId: string, suppressNotifs = false): Promise<void>
     const newNudges = nudges.filter((n) => !knownNudgeIds.has(n.id));
     if (newNudges.length === 0) return;
 
+    for (const n of newNudges) knownNudgeIds.add(n.id);
+
     const senderIds = [...new Set(newNudges.map((n) => n.sender_id))];
     const { data: profiles } = await supabase
       .from('profiles')
@@ -336,7 +338,6 @@ async function pollNudges(userId: string, suppressNotifs = false): Promise<void>
     (profiles || []).forEach((p: any) => { profileMap[p.id] = p.connect_code; });
 
     for (const nudge of newNudges) {
-      knownNudgeIds.add(nudge.id);
       if (!suppressNotifs && serviceStartedAt && nudge.created_at >= serviceStartedAt) {
         unreadNudgeCount++;
         const fromCode = profileMap[nudge.sender_id];

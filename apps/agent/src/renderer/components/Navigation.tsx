@@ -41,6 +41,7 @@ export function Navigation() {
       window.api.getPlayerCount().then((c: number) => { if (c > 0) setPlayerCount(c); });
       window.api.getLivePresence().then(setLivePresence);
       window.api.getBroadcast().then((msg: string | null) => setBroadcast(msg));
+      window.api.getUnreadNudgeCount().then(setUnreadNudges);
     }
     const interval = setInterval(refreshStats, 300_000);
     const onVisible = () => { if (!document.hidden) refreshStats(); };
@@ -100,7 +101,7 @@ export function Navigation() {
             {copied ? 'Copied!' : 'Share with a Friend!'}
           </button>
         </div>
-        <div className="px-5 py-2 text-[10px] text-gray-600">v1.0.2</div>
+        <div className="px-5 py-2 text-[10px] text-gray-600">v1.0.3</div>
       </aside>
       <main className="flex-1 overflow-y-auto">
         <div className="h-[52px] shrink-0 drag relative">
