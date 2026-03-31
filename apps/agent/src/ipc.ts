@@ -196,6 +196,15 @@ export function registerIpcHandlers(
     }
   }, 10_000);
 
+  setTimeout(async () => {
+    try {
+      const user = await getCurrentUser();
+      if (user) await cleanupExpiredInvites(user.id);
+    } catch (e) {
+      console.error('[invites] startup cleanup failed', e);
+    }
+  }, 5_000);
+
   ipcMain.handle('auth:start', async () => {
     if (process.platform === 'linux') {
       const authDone = startLocalAuthServer();
@@ -593,10 +602,22 @@ export function registerIpcHandlers(
     }
   }
 
+  async function cleanupExpiredInvites(userId: string) {
+    const expiryCutoff = new Date(Date.now() - INVITE_EXPIRY_MS).toISOString();
+    await supabase
+      .from('play_invites')
+      .delete()
+      .eq('sender_id', userId)
+      .eq('status', 'pending')
+      .lt('created_at', expiryCutoff);
+  }
+
   ipcMain.handle('invite:send', async (_e, friendConnectCode: string) => {
     try {
       const user = await getCurrentUser();
       if (!user) return { error: 'Not authenticated' };
+
+      await cleanupExpiredInvites(user.id);
 
       const { data: target } = await supabase
         .from('profiles')
@@ -902,14 +923,19 @@ export function registerIpcHandlers(
 
   ipcMain.handle('stats:livePresence', async () => {
     try {
+      const LIVE_STATS_STALE_MS = 24 * 60 * 60 * 1000;
+      const staleCutoff = new Date(Date.now() - LIVE_STATS_STALE_MS).toISOString();
       const { count: onlineCount } = await supabase
         .from('presence_log')
         .select('*, profiles!inner(id)', { count: 'exact', head: true })
-        .eq('status', 'online');
+        .eq('status', 'online')
+        .gte('updated_at', staleCutoff);
       const { count: inGameCount } = await supabase
         .from('presence_log')
         .select('*, profiles!inner(id)', { count: 'exact', head: true })
-        .eq('status', 'in-game');
+        .eq('status', 'in-game')
+        .not('opponent_code', 'is', null)
+        .gte('updated_at', staleCutoff);
       return { online: onlineCount ?? 0, inGame: inGameCount ?? 0 };
     } catch { return { online: 0, inGame: 0 }; }
   });

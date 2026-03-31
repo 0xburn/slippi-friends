@@ -28,6 +28,7 @@ AGENTS.md
 # Internal docs
 notes.md
 internal_notes.md
+queries.sql
 
 # Supabase local dev
 supabase/.temp/
