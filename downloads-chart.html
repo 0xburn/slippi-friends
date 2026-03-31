@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Friendlies — Downloads Over Time</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 24px;
+  }
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    background: linear-gradient(135deg, #58a6ff, #a371f7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .subtitle {
+    color: #8b949e;
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+  .stats-row {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .stat-card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 16px 28px;
+    text-align: center;
+    min-width: 140px;
+  }
+  .stat-card .value {
+    font-size: 32px;
+    font-weight: 700;
+    color: #58a6ff;
+  }
+  .stat-card .label {
+    font-size: 12px;
+    color: #8b949e;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+  }
+  .chart-container {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 16px;
+    padding: 24px;
+    width: 100%;
+    max-width: 1100px;
+    margin-bottom: 24px;
+  }
+  .chart-container h2 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: #e6edf3;
+  }
+  .chart-wrapper {
+    position: relative;
+    height: 340px;
+  }
+  .toggle-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    justify-content: center;
+  }
+  .toggle-btn {
+    background: #21262d;
+    border: 1px solid #30363d;
+    color: #8b949e;
+    padding: 6px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+  }
+  .toggle-btn.active {
+    background: #1f6feb;
+    border-color: #1f6feb;
+    color: #fff;
+  }
+  .toggle-btn:hover { border-color: #58a6ff; }
+</style>
+</head>
+<body>
+
+<h1>Friendlies Downloads</h1>
+<p class="subtitle">Profile signups since launch — hourly granularity (EST)</p>
+
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="value">1,255</div>
+    <div class="label">Total Signups</div>
+  </div>
+  <div class="stat-card">
+    <div class="value" id="peak-hour">—</div>
+    <div class="label">Peak Hour</div>
+  </div>
+  <div class="stat-card">
+    <div class="value" id="peak-day">—</div>
+    <div class="label">Best Day</div>
+  </div>
+  <div class="stat-card">
+    <div class="value" id="days-live">—</div>
+    <div class="label">Days Live</div>
+  </div>
+</div>
+
+<div class="chart-container">
+  <h2>Signups Per Hour</h2>
+  <div class="toggle-row">
+    <button class="toggle-btn active" onclick="setView('hourly')">Hourly</button>
+    <button class="toggle-btn" onclick="setView('daily')">Daily</button>
+  </div>
+  <div class="chart-wrapper">
+    <canvas id="signupsChart"></canvas>
+  </div>
+</div>
+
+<div class="chart-container">
+  <h2>Cumulative Signups</h2>
+  <div class="chart-wrapper">
+    <canvas id="cumulativeChart"></canvas>
+  </div>
+</div>
+
+<script>
+const hourlyData = [
+  { hour: "2026-03-22T19:00:00-04:00", signups: 1 },
+  { hour: "2026-03-22T22:00:00-04:00", signups: 1 },
+  { hour: "2026-03-23T09:00:00-04:00", signups: 1 },
+  { hour: "2026-03-23T19:00:00-04:00", signups: 1 },
+  { hour: "2026-03-23T20:00:00-04:00", signups: 7 },
+  { hour: "2026-03-23T21:00:00-04:00", signups: 3 },
+  { hour: "2026-03-23T22:00:00-04:00", signups: 2 },
+  { hour: "2026-03-23T23:00:00-04:00", signups: 3 },
+  { hour: "2026-03-24T00:00:00-04:00", signups: 20 },
+  { hour: "2026-03-24T01:00:00-04:00", signups: 13 },
+  { hour: "2026-03-24T02:00:00-04:00", signups: 12 },
+  { hour: "2026-03-24T03:00:00-04:00", signups: 3 },
+  { hour: "2026-03-24T06:00:00-04:00", signups: 11 },
+  { hour: "2026-03-24T07:00:00-04:00", signups: 7 },
+  { hour: "2026-03-24T08:00:00-04:00", signups: 10 },
+  { hour: "2026-03-24T09:00:00-04:00", signups: 10 },
+  { hour: "2026-03-24T10:00:00-04:00", signups: 8 },
+  { hour: "2026-03-24T11:00:00-04:00", signups: 6 },
+  { hour: "2026-03-24T12:00:00-04:00", signups: 13 },
+  { hour: "2026-03-24T13:00:00-04:00", signups: 32 },
+  { hour: "2026-03-24T14:00:00-04:00", signups: 28 },
+  { hour: "2026-03-24T15:00:00-04:00", signups: 18 },
+  { hour: "2026-03-24T16:00:00-04:00", signups: 26 },
+  { hour: "2026-03-24T17:00:00-04:00", signups: 13 },
+  { hour: "2026-03-24T18:00:00-04:00", signups: 16 },
+  { hour: "2026-03-24T19:00:00-04:00", signups: 16 },
+  { hour: "2026-03-24T20:00:00-04:00", signups: 18 },
+  { hour: "2026-03-24T21:00:00-04:00", signups: 14 },
+  { hour: "2026-03-24T22:00:00-04:00", signups: 22 },
+  { hour: "2026-03-24T23:00:00-04:00", signups: 18 },
+  { hour: "2026-03-25T00:00:00-04:00", signups: 15 },
+  { hour: "2026-03-25T01:00:00-04:00", signups: 5 },
+  { hour: "2026-03-25T02:00:00-04:00", signups: 6 },
+  { hour: "2026-03-25T03:00:00-04:00", signups: 5 },
+  { hour: "2026-03-25T04:00:00-04:00", signups: 6 },
+  { hour: "2026-03-25T05:00:00-04:00", signups: 4 },
+  { hour: "2026-03-25T06:00:00-04:00", signups: 3 },
+  { hour: "2026-03-25T07:00:00-04:00", signups: 3 },
+  { hour: "2026-03-25T08:00:00-04:00", signups: 2 },
+  { hour: "2026-03-25T09:00:00-04:00", signups: 8 },
+  { hour: "2026-03-25T10:00:00-04:00", signups: 8 },
+  { hour: "2026-03-25T11:00:00-04:00", signups: 9 },
+  { hour: "2026-03-25T12:00:00-04:00", signups: 5 },
+  { hour: "2026-03-25T13:00:00-04:00", signups: 16 },
+  { hour: "2026-03-25T15:00:00-04:00", signups: 8 },
+  { hour: "2026-03-25T16:00:00-04:00", signups: 10 },
+  { hour: "2026-03-25T17:00:00-04:00", signups: 15 },
+  { hour: "2026-03-25T18:00:00-04:00", signups: 15 },
+  { hour: "2026-03-25T19:00:00-04:00", signups: 11 },
+  { hour: "2026-03-25T20:00:00-04:00", signups: 12 },
+  { hour: "2026-03-25T21:00:00-04:00", signups: 12 },
+  { hour: "2026-03-25T22:00:00-04:00", signups: 9 },
+  { hour: "2026-03-25T23:00:00-04:00", signups: 9 },
+  { hour: "2026-03-26T00:00:00-04:00", signups: 1 },
+  { hour: "2026-03-26T01:00:00-04:00", signups: 5 },
+  { hour: "2026-03-26T02:00:00-04:00", signups: 4 },
+  { hour: "2026-03-26T03:00:00-04:00", signups: 4 },
+  { hour: "2026-03-26T04:00:00-04:00", signups: 4 },
+  { hour: "2026-03-26T05:00:00-04:00", signups: 4 },
+  { hour: "2026-03-26T06:00:00-04:00", signups: 2 },
+  { hour: "2026-03-26T07:00:00-04:00", signups: 2 },
+  { hour: "2026-03-26T08:00:00-04:00", signups: 3 },
+  { hour: "2026-03-26T09:00:00-04:00", signups: 5 },
+  { hour: "2026-03-26T10:00:00-04:00", signups: 1 },
+  { hour: "2026-03-26T11:00:00-04:00", signups: 6 },
+  { hour: "2026-03-26T12:00:00-04:00", signups: 4 },
+  { hour: "2026-03-26T13:00:00-04:00", signups: 8 },
+  { hour: "2026-03-26T14:00:00-04:00", signups: 13 },
+  { hour: "2026-03-26T15:00:00-04:00", signups: 7 },
+  { hour: "2026-03-26T16:00:00-04:00", signups: 15 },
+  { hour: "2026-03-26T17:00:00-04:00", signups: 15 },
+  { hour: "2026-03-26T18:00:00-04:00", signups: 12 },
+  { hour: "2026-03-26T19:00:00-04:00", signups: 22 },
+  { hour: "2026-03-26T20:00:00-04:00", signups: 10 },
+  { hour: "2026-03-26T21:00:00-04:00", signups: 9 },
+  { hour: "2026-03-26T22:00:00-04:00", signups: 15 },
+  { hour: "2026-03-26T23:00:00-04:00", signups: 10 },
+  { hour: "2026-03-27T00:00:00-04:00", signups: 8 },
+  { hour: "2026-03-27T01:00:00-04:00", signups: 9 },
+  { hour: "2026-03-27T02:00:00-04:00", signups: 7 },
+  { hour: "2026-03-27T03:00:00-04:00", signups: 8 },
+  { hour: "2026-03-27T04:00:00-04:00", signups: 3 },
+  { hour: "2026-03-27T05:00:00-04:00", signups: 2 },
+  { hour: "2026-03-27T06:00:00-04:00", signups: 4 },
+  { hour: "2026-03-27T07:00:00-04:00", signups: 6 },
+  { hour: "2026-03-27T08:00:00-04:00", signups: 4 },
+  { hour: "2026-03-27T09:00:00-04:00", signups: 5 },
+  { hour: "2026-03-27T10:00:00-04:00", signups: 2 },
+  { hour: "2026-03-27T11:00:00-04:00", signups: 6 },
+  { hour: "2026-03-27T12:00:00-04:00", signups: 7 },
+  { hour: "2026-03-27T13:00:00-04:00", signups: 8 },
+  { hour: "2026-03-27T14:00:00-04:00", signups: 12 },
+  { hour: "2026-03-27T15:00:00-04:00", signups: 13 },
+  { hour: "2026-03-27T16:00:00-04:00", signups: 13 },
+  { hour: "2026-03-27T17:00:00-04:00", signups: 12 },
+  { hour: "2026-03-27T18:00:00-04:00", signups: 8 },
+  { hour: "2026-03-27T19:00:00-04:00", signups: 10 },
+  { hour: "2026-03-27T20:00:00-04:00", signups: 13 },
+  { hour: "2026-03-27T21:00:00-04:00", signups: 7 },
+  { hour: "2026-03-27T22:00:00-04:00", signups: 6 },
+  { hour: "2026-03-27T23:00:00-04:00", signups: 11 },
+  { hour: "2026-03-28T00:00:00-04:00", signups: 7 },
+  { hour: "2026-03-28T01:00:00-04:00", signups: 3 },
+  { hour: "2026-03-28T02:00:00-04:00", signups: 2 },
+  { hour: "2026-03-28T03:00:00-04:00", signups: 2 },
+  { hour: "2026-03-28T04:00:00-04:00", signups: 3 },
+  { hour: "2026-03-28T05:00:00-04:00", signups: 1 },
+  { hour: "2026-03-28T06:00:00-04:00", signups: 2 },
+  { hour: "2026-03-28T08:00:00-04:00", signups: 3 },
+  { hour: "2026-03-28T09:00:00-04:00", signups: 1 },
+  { hour: "2026-03-28T10:00:00-04:00", signups: 1 },
+  { hour: "2026-03-28T11:00:00-04:00", signups: 4 },
+  { hour: "2026-03-28T12:00:00-04:00", signups: 4 },
+  { hour: "2026-03-28T13:00:00-04:00", signups: 4 },
+  { hour: "2026-03-28T14:00:00-04:00", signups: 3 },
+  { hour: "2026-03-28T15:00:00-04:00", signups: 1 },
+  { hour: "2026-03-28T17:00:00-04:00", signups: 2 },
+  { hour: "2026-03-28T18:00:00-04:00", signups: 2 },
+  { hour: "2026-03-28T19:00:00-04:00", signups: 7 },
+  { hour: "2026-03-28T20:00:00-04:00", signups: 2 },
+  { hour: "2026-03-28T21:00:00-04:00", signups: 2 },
+  { hour: "2026-03-28T23:00:00-04:00", signups: 3 },
+  { hour: "2026-03-29T00:00:00-04:00", signups: 1 },
+  { hour: "2026-03-29T01:00:00-04:00", signups: 1 },
+  { hour: "2026-03-29T02:00:00-04:00", signups: 1 },
+  { hour: "2026-03-29T03:00:00-04:00", signups: 2 },
+  { hour: "2026-03-29T04:00:00-04:00", signups: 1 },
+  { hour: "2026-03-29T05:00:00-04:00", signups: 2 },
+  { hour: "2026-03-29T06:00:00-04:00", signups: 3 },
+  { hour: "2026-03-29T07:00:00-04:00", signups: 1 },
+  { hour: "2026-03-29T08:00:00-04:00", signups: 1 },
+  { hour: "2026-03-29T09:00:00-04:00", signups: 1 },
+  { hour: "2026-03-29T11:00:00-04:00", signups: 1 },
+  { hour: "2026-03-29T13:00:00-04:00", signups: 6 },
+  { hour: "2026-03-29T14:00:00-04:00", signups: 4 },
+  { hour: "2026-03-29T15:00:00-04:00", signups: 6 },
+  { hour: "2026-03-29T16:00:00-04:00", signups: 13 },
+  { hour: "2026-03-29T17:00:00-04:00", signups: 29 },
+  { hour: "2026-03-29T18:00:00-04:00", signups: 19 },
+  { hour: "2026-03-29T19:00:00-04:00", signups: 18 },
+  { hour: "2026-03-29T20:00:00-04:00", signups: 12 },
+  { hour: "2026-03-29T21:00:00-04:00", signups: 5 },
+  { hour: "2026-03-29T22:00:00-04:00", signups: 7 },
+  { hour: "2026-03-29T23:00:00-04:00", signups: 16 },
+  { hour: "2026-03-30T00:00:00-04:00", signups: 14 },
+  { hour: "2026-03-30T01:00:00-04:00", signups: 4 },
+  { hour: "2026-03-30T02:00:00-04:00", signups: 10 },
+  { hour: "2026-03-30T03:00:00-04:00", signups: 5 },
+  { hour: "2026-03-30T04:00:00-04:00", signups: 8 },
+  { hour: "2026-03-30T06:00:00-04:00", signups: 4 },
+  { hour: "2026-03-30T07:00:00-04:00", signups: 5 },
+  { hour: "2026-03-30T08:00:00-04:00", signups: 2 },
+  { hour: "2026-03-30T09:00:00-04:00", signups: 2 },
+  { hour: "2026-03-30T10:00:00-04:00", signups: 3 },
+  { hour: "2026-03-30T11:00:00-04:00", signups: 4 },
+  { hour: "2026-03-30T12:00:00-04:00", signups: 5 },
+  { hour: "2026-03-30T13:00:00-04:00", signups: 7 },
+  { hour: "2026-03-30T14:00:00-04:00", signups: 10 },
+  { hour: "2026-03-30T15:00:00-04:00", signups: 6 },
+  { hour: "2026-03-30T16:00:00-04:00", signups: 3 },
+  { hour: "2026-03-30T17:00:00-04:00", signups: 12 },
+  { hour: "2026-03-30T18:00:00-04:00", signups: 11 },
+  { hour: "2026-03-30T19:00:00-04:00", signups: 3 },
+  { hour: "2026-03-30T20:00:00-04:00", signups: 8 },
+  { hour: "2026-03-30T21:00:00-04:00", signups: 7 },
+];
+
+// Compute daily aggregates
+const dailyMap = {};
+hourlyData.forEach(d => {
+  const day = d.hour.slice(0, 10);
+  dailyMap[day] = (dailyMap[day] || 0) + d.signups;
+});
+const dailyData = Object.entries(dailyMap).map(([day, signups]) => ({ day, signups }));
+
+// Compute cumulative
+let cumulative = 0;
+const cumulativeData = hourlyData.map(d => {
+  cumulative += d.signups;
+  return { hour: d.hour, total: cumulative };
+});
+
+// Stats
+const peakHour = hourlyData.reduce((a, b) => a.signups > b.signups ? a : b);
+const peakDay = dailyData.reduce((a, b) => a.signups > b.signups ? a : b);
+const firstDate = new Date(hourlyData[0].hour);
+const lastDate = new Date(hourlyData[hourlyData.length - 1].hour);
+const daysLive = Math.ceil((lastDate - firstDate) / (1000 * 60 * 60 * 24));
+
+document.getElementById('peak-hour').textContent = peakHour.signups;
+document.getElementById('peak-day').textContent = peakDay.signups;
+document.getElementById('days-live').textContent = daysLive;
+
+const gridColor = 'rgba(48, 54, 61, 0.6)';
+const tickColor = '#8b949e';
+
+// Signups chart
+const signupsCtx = document.getElementById('signupsChart').getContext('2d');
+let signupsChart;
+
+function buildSignupsChart(mode) {
+  if (signupsChart) signupsChart.destroy();
+
+  const isHourly = mode === 'hourly';
+  const data = isHourly
+    ? hourlyData.map(d => ({ x: d.hour, y: d.signups }))
+    : dailyData.map(d => ({ x: d.day + 'T12:00:00-04:00', y: d.signups }));
+
+  signupsChart = new Chart(signupsCtx, {
+    type: 'line',
+    data: {
+      datasets: [{
+        label: isHourly ? 'Signups per hour' : 'Signups per day',
+        data,
+        borderColor: isHourly ? '#58a6ff' : '#a371f7',
+        backgroundColor: isHourly
+          ? 'rgba(88, 166, 255, 0.1)'
+          : 'rgba(163, 113, 247, 0.1)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 0,
+        pointHitRadius: 8,
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1c2128',
+          titleColor: '#e6edf3',
+          bodyColor: '#8b949e',
+          borderColor: '#30363d',
+          borderWidth: 1,
+          padding: 12,
+          callbacks: {
+            title: (items) => {
+              const d = new Date(items[0].parsed.x);
+              const tz = { timeZone: 'America/New_York' };
+              return isHourly
+                ? d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', ...tz }) + ' ' +
+                  d.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true, ...tz }) + ' EST'
+                : d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', ...tz });
+            },
+            label: (item) => `  ${item.parsed.y} signups`
+          }
+        }
+      },
+      scales: {
+        x: {
+          type: 'time',
+          time: {
+            unit: isHourly ? 'day' : 'day',
+            displayFormats: { day: 'MMM d', hour: 'MMM d ha' },
+          },
+          grid: { color: gridColor },
+          ticks: { color: tickColor, maxRotation: 0 },
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: gridColor },
+          ticks: { color: tickColor, stepSize: isHourly ? 5 : 50 },
+          title: { display: true, text: 'Signups', color: tickColor }
+        }
+      }
+    }
+  });
+}
+
+buildSignupsChart('hourly');
+
+function setView(mode) {
+  document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  buildSignupsChart(mode);
+}
+
+// Cumulative chart
+const cumCtx = document.getElementById('cumulativeChart').getContext('2d');
+new Chart(cumCtx, {
+  type: 'line',
+  data: {
+    datasets: [{
+      label: 'Cumulative signups',
+      data: cumulativeData.map(d => ({ x: d.hour, y: d.total })),
+      borderColor: '#a371f7',
+      backgroundColor: 'rgba(163, 113, 247, 0.1)',
+      fill: true,
+      tension: 0.3,
+      pointRadius: 0,
+      pointHitRadius: 8,
+      borderWidth: 2.5,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#1c2128',
+        titleColor: '#e6edf3',
+        bodyColor: '#8b949e',
+        borderColor: '#30363d',
+        borderWidth: 1,
+        padding: 12,
+        callbacks: {
+          title: (items) => {
+            const d = new Date(items[0].parsed.x);
+            const tz = { timeZone: 'America/New_York' };
+            return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', ...tz }) + ' ' +
+              d.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true, ...tz }) + ' EST';
+          },
+          label: (item) => `  ${item.parsed.y.toLocaleString()} total signups`
+        }
+      }
+    },
+    scales: {
+      x: {
+        type: 'time',
+        time: { unit: 'day', displayFormats: { day: 'MMM d' } },
+        grid: { color: gridColor },
+        ticks: { color: tickColor, maxRotation: 0 },
+      },
+      y: {
+        beginAtZero: true,
+        grid: { color: gridColor },
+        ticks: { color: tickColor },
+        title: { display: true, text: 'Total Signups', color: tickColor }
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>

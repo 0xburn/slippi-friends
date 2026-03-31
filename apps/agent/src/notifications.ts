@@ -2,6 +2,9 @@ import { BrowserWindow, Notification } from 'electron';
 import { getSettings } from './settings';
 import { getCurrentStatus } from './presence';
 
+const NOTIF_COOLDOWN_MS = 60_000;
+const recentFriendNotifs = new Map<string, number>();
+
 function playNotificationSound(): void {
   try {
     if (!getSettings().notificationSound) return;
@@ -23,15 +26,20 @@ export function showFriendOnlineNotification(
   try {
     if (!Notification.isSupported()) return;
     const suppress = shouldSuppressToast();
-    if (!suppress) {
-      const label = newStatus === 'in-game' ? 'is now in game' : 'is now online';
-      const n = new Notification({
-        title: 'friendlies',
-        body: `${connectCode} ${label}`,
-        silent: true,
-      });
-      n.show();
-    }
+    if (suppress) return;
+
+    const now = Date.now();
+    const lastShown = recentFriendNotifs.get(connectCode);
+    if (lastShown && now - lastShown < NOTIF_COOLDOWN_MS) return;
+    recentFriendNotifs.set(connectCode, now);
+
+    const label = newStatus === 'in-game' ? 'is now in game' : 'is now online';
+    const n = new Notification({
+      title: 'friendlies',
+      body: `${connectCode} ${label}`,
+      silent: true,
+    });
+    n.show();
   } catch (e) {
     console.error('showFriendOnlineNotification failed', e);
   }

@@ -995,7 +995,12 @@ export function registerIpcHandlers(
     } catch (e) { console.error('presence:friendStatuses', e); return {}; }
   });
 
+  let discoverInFlight: Promise<any[]> | null = null;
+
   ipcMain.handle('discover:list', async (_e, opts?: { characterIds?: number[]; minElo?: number; maxElo?: number }) => {
+    if (discoverInFlight) return discoverInFlight;
+    discoverInFlight = (async () => {
+    const t0 = performance.now();
     const characterIds = opts?.characterIds;
     const minElo = opts?.minElo ?? null;
     const maxElo = opts?.maxElo ?? null;
@@ -1005,12 +1010,14 @@ export function registerIpcHandlers(
     try {
       const user = await getCurrentUser();
       if (!user) return [];
+      const t1 = performance.now();
 
       const [{ data: myProfile }, { data: friendRows }, { data: blockedRows }] = await Promise.all([
         supabase.from('profiles').select('latitude, longitude, region').eq('id', user.id).single(),
         supabase.from('friends').select('friend_id').eq('user_id', user.id),
         supabase.from('blocked_users').select('blocked_user_id, blocked_connect_code').eq('user_id', user.id),
       ]);
+      const t2 = performance.now();
       const localGeo = getCachedGeo();
       const myLat = myProfile?.latitude ?? localGeo?.lat ?? null;
       const myLng = myProfile?.longitude ?? localGeo?.lon ?? null;
@@ -1032,6 +1039,7 @@ export function registerIpcHandlers(
         .in('status', ['online', 'in-game'])
         .gte('updated_at', cutoff);
       if (!presenceRows || presenceRows.length === 0) return [];
+      const t3 = performance.now();
 
       const candidateIds = presenceRows
         .map((r: any) => r.user_id)
@@ -1043,6 +1051,7 @@ export function registerIpcHandlers(
         .select('id, connect_code, display_name, avatar_url, latitude, longitude, top_characters, main_character, secondary_character, region, chosen_region, hide_region, hide_discord_unless_friends, hide_avatar, hide_connection_type, discord_username, discord_id')
         .in('id', candidateIds);
       if (!profiles) return [];
+      const t4 = performance.now();
 
       const notBlocked = profiles.filter((p: any) => !blockedCodes.has(p.connect_code));
       const filtered = filterChars
@@ -1063,8 +1072,8 @@ export function registerIpcHandlers(
         const { data: ratings } = await supabase.from('player_ratings').select('connect_code, effective_rating').in('connect_code', codes);
         if (ratings) ratings.forEach((r: any) => { ratingsMap[r.connect_code] = r; });
       }
+      const t5 = performance.now();
 
-      // Opportunistically populate player_ratings for players missing from DB
       const missingCodes = codes.filter((c: string) => !ratingsMap[c]);
       if (missingCodes.length > 0) {
         void batchFetchRatings(missingCodes);
@@ -1086,6 +1095,7 @@ export function registerIpcHandlers(
           }
         }
       }
+      const t6 = performance.now();
 
       const myRegion = (myProfile?.region as string | null) ?? localGeo?.region ?? null;
       const myCountry = myRegion?.split(',').pop()?.trim() ?? null;
@@ -1177,8 +1187,12 @@ export function registerIpcHandlers(
         return a.distance - b.distance;
       });
 
-      return results.slice(0, 50);
+      const final = results.slice(0, 50);
+      console.log(`[bench] discover:list total=${(performance.now()-t0).toFixed(0)}ms (auth=${(t1-t0).toFixed(0)} context=${(t2-t1).toFixed(0)} presence=${(t3-t2).toFixed(0)} profiles=${(t4-t3).toFixed(0)} ratings=${(t5-t4).toFixed(0)} matches=${(t6-t5).toFixed(0)} candidates=${candidateIds.length} results=${final.length} missingRatings=${missingCodes.length})`);
+      return final;
     } catch (e) { console.error('discover:list', e); return []; }
+    })();
+    try { return await discoverInFlight; } finally { discoverInFlight = null; }
   });
 
   const VALID_NUDGE_MESSAGES = ['GGs', 'one more', 'gtg', 'you play so hot and cool', 'that was sick', "you're cracked", "i'm cracked", "i'm so high", 'check discord', 'hi'];

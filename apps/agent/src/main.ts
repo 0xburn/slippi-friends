@@ -170,18 +170,26 @@ async function stopAgentServices(): Promise<void> {
   stopWatcher();
 }
 
+let pollInFlight = false;
+
 async function pollAllNotifications(userId: string): Promise<void> {
-  const t0 = performance.now();
-  const suppressNotifs = !firstPollDone;
-  await Promise.all([
-    pollFriendOnlineStatuses(userId, suppressNotifs),
-    pollIncomingFriendRequests(userId, suppressNotifs),
-    pollPlayInvites(userId),
-    pollNudges(userId, suppressNotifs),
-  ]);
-  firstPollDone = true;
-  const ms = performance.now() - t0;
-  if (ms > 200) console.log(`[perf] pollAllNotifications took ${ms.toFixed(0)}ms`);
+  if (pollInFlight) return;
+  pollInFlight = true;
+  try {
+    const t0 = performance.now();
+    const suppressNotifs = !firstPollDone;
+    await Promise.all([
+      pollFriendOnlineStatuses(userId, suppressNotifs),
+      pollIncomingFriendRequests(userId, suppressNotifs),
+      pollPlayInvites(userId),
+      pollNudges(userId, suppressNotifs),
+    ]);
+    firstPollDone = true;
+    const ms = performance.now() - t0;
+    if (ms > 200) console.log(`[perf] pollAllNotifications took ${ms.toFixed(0)}ms`);
+  } finally {
+    pollInFlight = false;
+  }
 }
 
 async function pollFriendOnlineStatuses(userId: string, suppressNotifs = false): Promise<void> {

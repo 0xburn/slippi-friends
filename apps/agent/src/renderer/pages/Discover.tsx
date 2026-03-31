@@ -232,7 +232,11 @@ export function Discover() {
   const eloFilterRef = useRef(eloFilter);
   eloFilterRef.current = eloFilter;
 
-  async function load(chars?: Set<number>, elo?: Set<number>) {
+  const loadInFlight = useRef(false);
+
+  async function load(chars?: Set<number>, elo?: Set<number>, resetVisible = true) {
+    if (loadInFlight.current) return;
+    loadInFlight.current = true;
     const filter = chars ?? charFilterRef.current;
     const eloSel = elo ?? eloFilterRef.current;
     try {
@@ -249,7 +253,8 @@ export function Discover() {
     } catch {}
     setLoading(false);
     setLastRefresh(Date.now());
-    setVisibleCount(15);
+    if (resetVisible) setVisibleCount(15);
+    loadInFlight.current = false;
   }
 
   async function loadSentInvites() {
@@ -338,8 +343,8 @@ export function Discover() {
     loadSentInvites();
     loadPlayInvites();
     window.api.getIdentity().then((id) => { if (id) setMyCode(id.connectCode); });
-    const interval = setInterval(() => { if (!document.hidden) { load(); loadSentInvites(); loadPlayInvites(); } }, 30_000);
-    const onVisible = () => { if (!document.hidden) { load(); loadSentInvites(); loadPlayInvites(); } };
+    const interval = setInterval(() => { if (!document.hidden) { load(undefined, undefined, false); loadSentInvites(); loadPlayInvites(); } }, 30_000);
+    const onVisible = () => { if (!document.hidden) { load(undefined, undefined, false); loadSentInvites(); loadPlayInvites(); } };
     document.addEventListener('visibilitychange', onVisible);
     const unsubInvRefresh = window.api.onInvitesRefresh(() => { loadSentInvites(); loadPlayInvites(); });
     const unsubDc = window.api.onDirectConnectStatus((evt: any) => {

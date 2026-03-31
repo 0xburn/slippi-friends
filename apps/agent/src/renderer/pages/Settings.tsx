@@ -141,6 +141,9 @@ export function Settings() {
   }
 
   const notifsEnabled = settings.showNotifications;
+  const [searchQuery, setSearchQuery] = useState('');
+  const sq = searchQuery.toLowerCase();
+  const show = (...terms: string[]) => !sq || terms.some(t => t.toLowerCase().includes(sq));
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -151,7 +154,17 @@ export function Settings() {
         )}
       </div>
 
+      <input
+        type="text"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        placeholder="Search settings..."
+        className="w-full rounded-lg border border-[#2a2a2a] bg-[#0a0a0a] px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#21BA45]/50"
+      />
+
+      {show('replay', 'directory', 'display region', 'region', 'launch', 'login', 'close', 'tray') && (
       <div className="rounded-2xl border border-[#2a2a2a] bg-[#141414] divide-y divide-[#2a2a2a]">
+        {show('replay', 'directory') && (
         <div className="p-5">
           <label className="text-sm font-medium text-gray-300">Replay Directory</label>
           <div className="flex gap-2 mt-2">
@@ -169,29 +182,68 @@ export function Settings() {
             </button>
           </div>
         </div>
+        )}
 
+        {!privacy.hideRegion && show('display region', 'region', 'override', 'auto-detect', 'profile') && (
+          <div className="flex items-center justify-between px-5 py-3">
+            <div>
+              <p className="text-sm font-medium text-gray-300">Display Region</p>
+              <p className="text-xs text-gray-500">Override the auto-detected region shown on your profile</p>
+            </div>
+            <select
+              className="bg-[#21BA45]/10 border border-[#21BA45]/40 rounded-lg px-3 py-1.5 text-sm text-[#21BA45] font-medium focus:outline-none focus:border-[#21BA45]/70 min-w-[180px] cursor-pointer"
+              value={privacy.chosenRegion || ''}
+              onChange={async (e) => {
+                const val = e.target.value || null;
+                setPrivacy((s) => ({ ...s, chosenRegion: val }));
+                await window.api.setRegion(val);
+                flash();
+              }}
+            >
+              <option value="">Auto-detect</option>
+              <optgroup label="North America">
+                {['MDVA','Tristate','New England','Florida','NorCal','Central Cal','SoCal','Pacific Northwest','Midwest','Southwest','South','Canada','Mexico'].map((s) => <option key={s} value={s}>{s}</option>)}
+              </optgroup>
+              <optgroup label="Europe">
+                {['UK','Ireland','Germany','Sweden','France','Netherlands','Norway','Spain','EU'].map((s) => <option key={s} value={s}>{s}</option>)}
+              </optgroup>
+              <optgroup label="Asia">
+                {['Japan'].map((s) => <option key={s} value={s}>{s}</option>)}
+              </optgroup>
+            </select>
+          </div>
+        )}
+        {show('launch', 'login', 'start', 'auto') && (
         <ToggleRow
           label="Launch at Login"
           description="Start friendlies automatically when you log in"
           checked={settings.autoLaunch}
           onChange={() => toggle('autoLaunch')}
         />
+        )}
+        {show('close', 'tray', 'minimize', 'quit') && (
         <ToggleRow
           label="Close to Tray"
           description="Minimize to the system tray instead of quitting when you close the window"
           checked={settings.closeToTray}
           onChange={() => toggle('closeToTray')}
         />
+        )}
       </div>
+      )}
 
+      {show('notification', 'friend online', 'play invite', 'sound', 'volume', 'test') && (
       <div className="rounded-2xl border border-[#2a2a2a] bg-[#141414] divide-y divide-[#2a2a2a]">
+        {show('notification', 'desktop') && (
         <ToggleRow
           label="Notifications"
           description="Enable desktop notifications"
           checked={settings.showNotifications}
           onChange={() => toggle('showNotifications')}
         />
+        )}
 
+        {show('friend online', 'notify', 'notification') && (
         <ToggleRow
           label="Friend Online"
           description="Notify when a friend comes online or enters a game"
@@ -200,7 +252,9 @@ export function Settings() {
           disabled={!notifsEnabled}
           indent
         />
+        )}
 
+        {show('play invite', 'notify', 'notification') && (
         <ToggleRow
           label="Play Invites"
           description="Notify when a friend invites you to play"
@@ -209,7 +263,9 @@ export function Settings() {
           disabled={!notifsEnabled}
           indent
         />
+        )}
 
+        {show('notification sound', 'sound effect') && (
         <ToggleRow
           label="Notification Sound"
           description="Play a sound effect with notifications"
@@ -218,7 +274,9 @@ export function Settings() {
           disabled={!notifsEnabled}
           indent
         />
+        )}
 
+        {show('volume', 'sound') && (
         <div className={`flex items-center justify-between p-5 pl-10 ${!notifsEnabled || !settings.notificationSound ? 'opacity-40 pointer-events-none' : ''}`}>
           <div>
             <p className="text-sm font-medium text-gray-300">Volume</p>
@@ -241,7 +299,9 @@ export function Settings() {
             <span className="text-xs text-gray-500 w-8 text-right tabular-nums">{Math.round((settings.notificationVolume / 0.35) * 100)}%</span>
           </div>
         </div>
+        )}
 
+        {show('test notification', 'preview') && (
         <div className={`flex items-center justify-between p-5 pl-10 ${!notifsEnabled ? 'opacity-40 pointer-events-none' : ''}`}>
           <div>
             <p className="text-sm font-medium text-gray-300">Test Notification</p>
@@ -255,8 +315,11 @@ export function Settings() {
             Test
           </button>
         </div>
+        )}
       </div>
+      )}
 
+      {show('reduce', 'background', 'performance', 'polling', 'game') && (
       <div className="rounded-2xl border border-[#2a2a2a] bg-[#141414] divide-y divide-[#2a2a2a]">
         <ToggleRow
           label="Reduce Background Activity"
@@ -265,12 +328,15 @@ export function Settings() {
           onChange={() => toggle('reduceBackgroundActivity')}
         />
       </div>
+      )}
 
+      {show('privacy', 'friend request', 'hide', 'online status', 'location', 'discord', 'avatar', 'photo', 'connection type') && (
       <div className="rounded-2xl border border-[#2a2a2a] bg-[#141414] divide-y divide-[#2a2a2a]">
         <div className="p-5">
           <p className="text-sm font-medium text-gray-300">Privacy</p>
           <p className="text-xs text-gray-500 mt-0.5">Control what other players can see about you</p>
         </div>
+        {show('friend request', 'disable', 'block', 'incoming') && (
         <ToggleRow
           label="Disable Friend Requests"
           description="Block all incoming friend requests from other players"
@@ -278,6 +344,8 @@ export function Settings() {
           onChange={() => togglePrivacy('disableFriendRequests')}
           indent
         />
+        )}
+        {show('hide online', 'online status', 'offline', 'appear') && (
         <ToggleRow
           label="Hide Online Status"
           description="Appear offline to all other players"
@@ -285,6 +353,8 @@ export function Settings() {
           onChange={() => togglePrivacy('hideOnlineStatus')}
           indent
         />
+        )}
+        {show('hide location', 'region', 'location') && (
         <ToggleRow
           label="Hide Location"
           description="Don't show your region to other players"
@@ -292,35 +362,8 @@ export function Settings() {
           onChange={() => togglePrivacy('hideRegion')}
           indent
         />
-        {!privacy.hideRegion && (
-          <div className="flex items-center justify-between px-5 py-3 pl-10">
-            <div>
-              <p className="text-sm text-gray-300">Display Region</p>
-              <p className="text-xs text-gray-500">Override the auto-detected region shown on your profile</p>
-            </div>
-            <select
-              className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-[#555] min-w-[180px]"
-              value={privacy.chosenRegion || ''}
-              onChange={async (e) => {
-                const val = e.target.value || null;
-                setPrivacy((s) => ({ ...s, chosenRegion: val }));
-                await window.api.setRegion(val);
-                flash();
-              }}
-            >
-              <option value="">Auto-detect</option>
-              <optgroup label="North America">
-                {['MDVA','Tristate','New England','Florida','NorCal','Central Cal','SoCal','Pacific Northwest','Midwest','Southwest','South','Canada','Mexico'].map((s) => <option key={s} value={s}>{s}</option>)}
-              </optgroup>
-              <optgroup label="Europe">
-                {['UK','Ireland','Germany','Sweden','France','Netherlands','Norway','Spain','EU'].map((s) => <option key={s} value={s}>{s}</option>)}
-              </optgroup>
-              <optgroup label="Asia">
-                {['Japan'].map((s) => <option key={s} value={s}>{s}</option>)}
-              </optgroup>
-            </select>
-          </div>
         )}
+        {show('hide discord', 'discord', 'non-friends', 'username') && (
         <ToggleRow
           label="Hide Discord from Non-Friends"
           description="Only show your Discord username to accepted friends"
@@ -328,6 +371,8 @@ export function Settings() {
           onChange={() => togglePrivacy('hideDiscordUnlessFriends')}
           indent
         />
+        )}
+        {show('hide discord photo', 'avatar', 'photo', 'character icon') && (
         <ToggleRow
           label="Hide Discord Photo"
           description="Show your main character icon instead of your Discord avatar"
@@ -335,7 +380,8 @@ export function Settings() {
           onChange={() => togglePrivacy('hideAvatar')}
           indent
         />
-        {myCode && DEBUG_CONNECT_CODES.includes(myCode) && (
+        )}
+        {myCode && DEBUG_CONNECT_CODES.includes(myCode) && show('connection type', 'wifi', 'ethernet') && (
           <ToggleRow
             label="Hide Connection Type"
             description="Don't show whether you're on Wi-Fi or Ethernet"
@@ -345,12 +391,15 @@ export function Settings() {
           />
         )}
       </div>
+      )}
 
+      {show('social', 'status preset', 'nudge', 'ggs', 'friendlies') && (
       <div className="rounded-2xl border border-[#2a2a2a] bg-[#141414] divide-y divide-[#2a2a2a]">
         <div className="p-5">
           <p className="text-sm font-medium text-gray-300">Social Features</p>
           <p className="text-xs text-gray-500 mt-0.5">Control which social features are enabled</p>
         </div>
+        {show('status preset', 'down for friendlies', 'status') && (
         <ToggleRow
           label="Status Presets"
           description="Show status presets like 'Down for friendlies' on your card and see others' statuses"
@@ -358,6 +407,8 @@ export function Settings() {
           onChange={() => toggle('disableStatuses')}
           indent
         />
+        )}
+        {show('nudge', 'ggs', 'quick message') && (
         <ToggleRow
           label="Nudges"
           description="Receive and send quick messages like 'GGs' to other players"
@@ -365,9 +416,11 @@ export function Settings() {
           onChange={() => toggle('disableNudges')}
           indent
         />
+        )}
       </div>
+      )}
 
-      {blockedUsers.length > 0 && (
+      {blockedUsers.length > 0 && show('block', 'unblock', 'blocked users') && (
         <div className="rounded-2xl border border-[#2a2a2a] bg-[#141414] divide-y divide-[#2a2a2a]">
           <div className="p-5">
             <p className="text-sm font-medium text-gray-300">Blocked Users</p>
@@ -404,6 +457,7 @@ export function Settings() {
         </div>
       )}
 
+      {show('account', 'log out', 'logout', 'update', 'version') && (
       <div className="rounded-2xl border border-[#2a2a2a] bg-[#141414] p-5">
         <h3 className="text-sm font-medium text-gray-300 mb-4">Account</h3>
         <div className="flex gap-3">
@@ -426,8 +480,15 @@ export function Settings() {
           </div>
         </div>
       </div>
+      )}
 
-      {pStats && myCode && DEBUG_CONNECT_CODES.includes(myCode) && (
+      {sq && !['replay', 'directory', 'display region', 'region', 'launch', 'login', 'close', 'tray', 'notification', 'friend online', 'play invite', 'sound', 'volume', 'test', 'reduce', 'background', 'performance', 'polling', 'game', 'privacy', 'friend request', 'hide', 'online status', 'location', 'discord', 'avatar', 'photo', 'connection type', 'social', 'status preset', 'nudge', 'ggs', 'friendlies', 'block', 'unblock', 'blocked users', 'account', 'log out', 'logout', 'update', 'version'].some(t => t.includes(sq)) && (
+        <div className="rounded-2xl border border-[#2a2a2a] bg-[#141414] p-12 text-center">
+          <p className="text-gray-500 text-sm">No settings match "{searchQuery}"</p>
+        </div>
+      )}
+
+      {pStats && myCode && DEBUG_CONNECT_CODES.includes(myCode) && !sq && (
         <div className="rounded-2xl border border-[#2a2a2a] bg-[#141414] p-5">
           <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Connection Health</h3>
           <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
@@ -456,11 +517,11 @@ export function Settings() {
         </div>
       )}
 
-      {myCode && DEBUG_CONNECT_CODES.includes(myCode) && (
+      {myCode && DEBUG_CONNECT_CODES.includes(myCode) && !sq && (
         <DebugLaunchPanel />
       )}
 
-      {metrics && myCode && DEBUG_CONNECT_CODES.includes(myCode) && (() => {
+      {metrics && myCode && DEBUG_CONNECT_CODES.includes(myCode) && !sq && (() => {
         const labelMap: Record<string, string> = {
           Browser: 'Main process',
           Tab: 'Renderer (UI)',
@@ -502,7 +563,7 @@ export function Settings() {
       })()}
 
       <p className="text-center text-xs text-gray-600">
-      friendlies v0.2.34
+      friendlies v1.0.0
       </p>
     </div>
   );
