@@ -381,7 +381,7 @@ export function Settings() {
           indent
         />
         )}
-        {myCode && DEBUG_CONNECT_CODES.includes(myCode) && show('connection type', 'wifi', 'ethernet') && (
+        {show('connection type', 'wifi', 'ethernet') && (
           <ToggleRow
             label="Hide Connection Type"
             description="Don't show whether you're on Wi-Fi or Ethernet"
@@ -563,7 +563,7 @@ export function Settings() {
       })()}
 
       <p className="text-center text-xs text-gray-600">
-      friendlies v1.0.4
+      friendlies v1.0.5
       </p>
     </div>
   );
