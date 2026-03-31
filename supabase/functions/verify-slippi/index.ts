@@ -143,6 +143,7 @@ serve(async (req) => {
 
     // Populate player_ratings with current + historical elo
     {
+      const MIN_WINS_FOR_RANK = 25;
       const ranked = user.rankedNetplayProfile;
       const currentRating = ranked?.ratingOrdinal ?? null;
       const currentWins = ranked?.wins ?? 0;
@@ -150,7 +151,7 @@ serve(async (req) => {
 
       const history: any[] = user.rankedNetplayProfileHistory ?? [];
       const completedSeasons = history
-        .filter((p: any) => p.season?.status !== 'active' && p.ratingOrdinal != null)
+        .filter((p: any) => p.season?.status !== 'active' && p.ratingOrdinal != null && (p.wins ?? 0) >= MIN_WINS_FOR_RANK)
         .sort((a: any, b: any) => {
           const aId = parseInt(a.season?.id ?? '0', 10);
           const bId = parseInt(b.season?.id ?? '0', 10);
@@ -161,7 +162,7 @@ serve(async (req) => {
       const lastSeasonRating = completedSeasons.length > 0 ? completedSeasons[0].ratingOrdinal : null;
 
       let effectiveRating: number | null;
-      if (currentWins + currentLosses > 0) {
+      if (currentWins >= MIN_WINS_FOR_RANK) {
         effectiveRating = currentRating;
       } else if (lastSeasonRating != null) {
         effectiveRating = lastSeasonRating;

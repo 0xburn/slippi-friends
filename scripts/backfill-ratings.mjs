@@ -63,9 +63,10 @@ async function fetchSlippiRating(connectCode) {
     const currentWins = ranked?.wins ?? 0;
     const currentLosses = ranked?.losses ?? 0;
 
+    const MIN_WINS_FOR_RANK = 25;
     const history = user.rankedNetplayProfileHistory ?? [];
     const completedSeasons = history
-      .filter((p) => p.season?.status !== 'active' && p.ratingOrdinal != null)
+      .filter((p) => p.season?.status !== 'active' && p.ratingOrdinal != null && (p.wins ?? 0) >= MIN_WINS_FOR_RANK)
       .sort((a, b) => {
         const aId = parseInt(a.season?.id ?? '0', 10);
         const bId = parseInt(b.season?.id ?? '0', 10);
@@ -76,7 +77,7 @@ async function fetchSlippiRating(connectCode) {
     const lastSeasonRating = completedSeasons.length > 0 ? completedSeasons[0].ratingOrdinal : null;
 
     let effectiveRating;
-    if (currentWins + currentLosses > 0) effectiveRating = currentRating;
+    if (currentWins >= MIN_WINS_FOR_RANK) effectiveRating = currentRating;
     else if (lastSeasonRating != null) effectiveRating = lastSeasonRating;
     else effectiveRating = null;
 
