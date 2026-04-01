@@ -142,6 +142,13 @@ function AuthPrompt({ connectCode, displayName }: { connectCode: string; display
             Link your Discord account to sync friends, track opponents,
             and show your online status. You only need to do this once.
           </p>
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3">
+            <p className="text-xs text-amber-400/90 leading-relaxed">
+              Your connect code can only be linked to one Discord account.
+              If you have multiple Discord accounts, make sure you sign in
+              with the one you want to use before continuing.
+            </p>
+          </div>
           <button
             onClick={handleAuth}
             disabled={waiting}
