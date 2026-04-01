@@ -4,6 +4,7 @@ import { CharacterIcon } from '../components/CharacterIcon';
 import { ConnectionTypeIcon } from '../components/ConnectionTypeIcon';
 import { RankBadge } from '../components/RankBadge';
 import { CHARACTER_MAP, getCharacterImagePath, getCharacterShortName } from '../lib/characters';
+import { IS_APRIL_FOOLS, ARMADA_PLAYER, isToxic } from '../lib/aprilFools';
 
 interface DiscoverPlayer {
   userId: string;
@@ -718,6 +719,28 @@ export function Discover() {
           </div>
         )}
 
+        {IS_APRIL_FOOLS && (
+          <div className="space-y-1">
+            <PlayerCard
+              player={{
+                connectCode: ARMADA_PLAYER.connectCode,
+                displayName: ARMADA_PLAYER.displayName,
+                avatarUrl: ARMADA_PLAYER.avatarUrl,
+                region: ARMADA_PLAYER.region,
+                rating: ARMADA_PLAYER.rating,
+                characterId: ARMADA_PLAYER.characterId,
+                topCharacters: ARMADA_PLAYER.topCharacters,
+                status: ARMADA_PLAYER.status,
+                lookingToPlay: ARMADA_PLAYER.lookingToPlay,
+                statusPreset: ARMADA_PLAYER.statusPreset,
+                connectionType: ARMADA_PLAYER.connectionType,
+              }}
+              rankOverride="Master 4"
+              onClick={() => {}}
+              addState="friends"
+            />
+          </div>
+        )}
         {filtered.slice(0, visibleCount).map((p) => {
           const state = adding === p.connectCode ? 'adding' : (addedMap.get(p.connectCode) ?? null);
           return (
@@ -755,6 +778,7 @@ export function Discover() {
                 onInvite={() => handleInvite(p.connectCode)}
                 inviteDisabled={inviting === p.connectCode || !!inviteSent[p.connectCode]}
                 inviteState={inviteSent[p.connectCode] ?? null}
+                toxic={isToxic(p.connectCode)}
               />
             </div>
           );

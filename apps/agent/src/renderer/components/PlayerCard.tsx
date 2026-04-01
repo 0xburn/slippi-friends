@@ -1,7 +1,7 @@
 import { memo, useState } from 'react';
 import { ConnectionTypeIcon } from './ConnectionTypeIcon';
 import { OnlineIndicator } from './OnlineIndicator';
-import { RankBadge } from './RankBadge';
+import { RankBadge, ToxicBadge } from './RankBadge';
 import { CharacterIcon } from './CharacterIcon';
 import { PlayerStatsPanel } from './PlayerStatsPanel';
 
@@ -48,6 +48,8 @@ interface PlayerCardProps {
   addState?: 'pending' | 'adding' | 'friends' | null;
   removeLabel?: string;
   onUnsend?: () => void;
+  toxic?: boolean;
+  rankOverride?: string;
 }
 
 function playerCardAreEqual(prev: PlayerCardProps, next: PlayerCardProps): boolean {
@@ -74,10 +76,12 @@ function playerCardAreEqual(prev: PlayerCardProps, next: PlayerCardProps): boole
     !!prev.onInvite === !!next.onInvite &&
     !!prev.onBlock === !!next.onBlock &&
     !!prev.onRemove === !!next.onRemove &&
-    !!prev.onUnsend === !!next.onUnsend;
+    !!prev.onUnsend === !!next.onUnsend &&
+    prev.toxic === next.toxic &&
+    prev.rankOverride === next.rankOverride;
 }
 
-export const PlayerCard = memo(function PlayerCard({ player, showStatus = true, expandable = true, onClick, onBlock, onRemove, onInvite, inviteDisabled, inviteState, nudgeOptions, onNudge, nudgeState, onAdd, addDisabled, addState, removeLabel, onUnsend }: PlayerCardProps) {
+export const PlayerCard = memo(function PlayerCard({ player, showStatus = true, expandable = true, onClick, onBlock, onRemove, onInvite, inviteDisabled, inviteState, nudgeOptions, onNudge, nudgeState, onAdd, addDisabled, addState, removeLabel, onUnsend, toxic, rankOverride }: PlayerCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [nudgePickerOpen, setNudgePickerOpen] = useState(false);
   const hasAvatar = !!player.avatarUrl;
@@ -169,7 +173,8 @@ export const PlayerCard = memo(function PlayerCard({ player, showStatus = true, 
             <CharacterIcon characterId={player.topCharacters[0].characterId} size="md" />
           </div>
         )}
-        <RankBadge rating={player.rating ?? null} />
+        <RankBadge rating={player.rating ?? null} overrideLabel={rankOverride} />
+        {toxic && <ToxicBadge />}
         {onInvite && (
           inviteState === true ? (
             <span className="text-[10px] font-medium text-[#21BA45] shrink-0 px-1">Sent!</span>

@@ -9,6 +9,7 @@ import { Settings } from './pages/Settings';
 import { Discover } from './pages/Discover';
 import { Leaderboard } from './pages/Leaderboard';
 import { UpdateBanner } from './components/UpdateBanner';
+import { AF, IS_APRIL_FOOLS } from './lib/aprilFools';
 
 type BootState =
   | { phase: 'loading' }
@@ -35,9 +36,9 @@ function SlippiNotFound() {
         <div className="fixed top-0 left-0 right-0 h-[52px] drag" />
         <div className="text-center space-y-6">
           <div className="flex flex-col items-center gap-3">
-            <img src="./logo.png" alt="L7" className="w-16 h-16" />
+            <img src={AF.logo} alt={IS_APRIL_FOOLS ? 'Grinder' : 'L7'} className="w-16 h-16" />
             <h1 className="text-3xl font-display font-bold">
-              <span className="text-[#21BA45]">friendlies</span>
+              <span style={{ color: AF.primary }}>{AF.appName}</span>
             </h1>
           </div>
           <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-6 text-left">
@@ -46,13 +47,14 @@ function SlippiNotFound() {
             </p>
             <p className="text-xs text-gray-400 leading-relaxed">
               Open <strong className="text-white">Slippi Launcher</strong> and log in
-              to your Slippi account. friendlies needs your connect code to identify you.
+              to your Slippi account. {AF.appName} needs your connect code to identify you.
             </p>
             <p className="text-xs text-gray-500 mt-3">
               Don't have Slippi Launcher?{' '}
               <button
                 onClick={() => window.api.openExternal('https://slippi.gg')}
-                className="text-[#21BA45] hover:underline"
+                className="hover:underline"
+                style={{ color: AF.primary }}
               >
                 Download from slippi.gg
               </button>
@@ -61,7 +63,10 @@ function SlippiNotFound() {
           <button
             onClick={retry}
             disabled={checking}
-            className="w-full rounded-xl bg-[#21BA45] px-6 py-3 font-semibold text-white transition-all hover:bg-[#1ea33e] disabled:opacity-60"
+            className="w-full rounded-xl px-6 py-3 font-semibold text-white transition-all disabled:opacity-60"
+            style={{ backgroundColor: AF.primary }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = AF.primaryHover; }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = AF.primary; }}
           >
             {checking ? 'Checking...' : 'I\'ve Logged In — Retry'}
           </button>
@@ -127,12 +132,12 @@ function AuthPrompt({ connectCode, displayName }: { connectCode: string; display
         <div className="fixed top-0 left-0 right-0 h-[52px] drag" />
         <div className="text-center space-y-6">
           <div className="flex flex-col items-center gap-3">
-            <img src="./logo.png" alt="L7" className="w-16 h-16 rounded-2xl" />
+            <img src={AF.logo} alt={IS_APRIL_FOOLS ? 'Grinder' : 'L7'} className="w-16 h-16 rounded-2xl" />
             <h1 className="text-3xl font-display font-bold">
-              <span className="text-[#21BA45]">friendlies</span>
+              <span style={{ color: AF.primary }}>{AF.appName}</span>
             </h1>
           </div>
-          <div className="rounded-xl border border-[#21BA45]/30 bg-[#21BA45]/5 p-5">
+          <div className="rounded-xl border p-5" style={{ borderColor: `${AF.primary}4d`, backgroundColor: `${AF.primary}0d` }}>
             <p className="text-2xl font-mono font-bold text-white tracking-wider">
               {connectCode}
             </p>
@@ -167,7 +172,8 @@ function AuthPrompt({ connectCode, displayName }: { connectCode: string; display
                     Browser didn't open?{' '}
                     <button
                       onClick={() => window.api.openExternal(authUrl)}
-                      className="text-[#21BA45] hover:underline"
+                      className="hover:underline"
+                      style={{ color: AF.primary }}
                     >
                       Click here to open manually
                     </button>
@@ -197,7 +203,7 @@ function AuthPrompt({ connectCode, displayName }: { connectCode: string; display
                     your browser's address bar and paste it below.
                   </p>
                   {manualSuccess ? (
-                    <p className="text-xs text-[#21BA45] font-medium py-1">Authenticated — loading...</p>
+                    <p className="text-xs font-medium py-1" style={{ color: AF.primary }}>Authenticated — loading...</p>
                   ) : (
                     <>
                       <div className="flex gap-2">
@@ -206,12 +212,16 @@ function AuthPrompt({ connectCode, displayName }: { connectCode: string; display
                           value={manualUrl}
                           onChange={(e) => { setManualUrl(e.target.value); setManualError(''); }}
                           placeholder="slippi-friends://auth-callback#..."
-                          className="flex-1 rounded-lg border border-[#2a2a2a] bg-[#0a0a0a] px-3 py-2 text-xs font-mono text-white placeholder-gray-600 focus:outline-none focus:border-[#21BA45]/50"
+                          className="flex-1 rounded-lg border border-[#2a2a2a] bg-[#0a0a0a] px-3 py-2 text-xs font-mono text-white placeholder-gray-600 focus:outline-none"
+                          style={{ ['--tw-ring-color' as string]: AF.primary }}
+                          onFocus={(e) => { e.currentTarget.style.borderColor = `${AF.primary}80`; }}
+                          onBlur={(e) => { e.currentTarget.style.borderColor = '#2a2a2a'; }}
                         />
                         <button
                           onClick={handleManualPaste}
                           disabled={!manualUrl.trim()}
-                          className="shrink-0 rounded-lg bg-[#21BA45] px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
+                          className="shrink-0 rounded-lg px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
+                          style={{ backgroundColor: AF.primary }}
                         >
                           Submit
                         </button>
@@ -312,7 +322,10 @@ export function App() {
           </div>
           <button
             onClick={() => window.location.reload()}
-            className="w-full rounded-xl bg-[#21BA45] px-6 py-3 font-semibold text-white transition-all hover:bg-[#1ea33e]"
+            className="w-full rounded-xl px-6 py-3 font-semibold text-white transition-all"
+            style={{ backgroundColor: AF.primary }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = AF.primaryHover; }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = AF.primary; }}
           >
             Restart
           </button>
@@ -343,7 +356,10 @@ export function App() {
           </div>
           <button
             onClick={() => { setCodeClaimed(null); window.location.reload(); }}
-            className="w-full rounded-xl bg-[#21BA45] px-6 py-3 font-semibold text-white transition-all hover:bg-[#1ea33e]"
+            className="w-full rounded-xl px-6 py-3 font-semibold text-white transition-all"
+            style={{ backgroundColor: AF.primary }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = AF.primaryHover; }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = AF.primary; }}
           >
             Retry
           </button>
@@ -385,7 +401,7 @@ export function App() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="fixed top-0 left-0 right-0 h-[52px] drag" />
-        <img src="./logo.png" alt="L7" className="w-20 h-20 animate-pulse" />
+        <img src={AF.logo} alt={IS_APRIL_FOOLS ? 'Grinder' : 'L7'} className="w-20 h-20 animate-pulse" />
       </div>
     );
   }
@@ -398,9 +414,9 @@ export function App() {
         <div className="fixed top-0 left-0 right-0 h-[52px] drag" />
         <div className="w-full max-w-md px-8 text-center space-y-6">
           <div className="flex flex-col items-center gap-3">
-            <img src="./logo.png" alt="L7" className="w-16 h-16" />
+            <img src={AF.logo} alt={IS_APRIL_FOOLS ? 'Grinder' : 'L7'} className="w-16 h-16" />
             <h1 className="text-3xl font-display font-bold">
-              <span className="text-[#21BA45]">friendlies</span>
+              <span style={{ color: AF.primary }}>{AF.appName}</span>
             </h1>
           </div>
           <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-6 text-left">
@@ -415,7 +431,10 @@ export function App() {
           </div>
           <button
             onClick={() => window.location.reload()}
-            className="w-full rounded-xl bg-[#21BA45] px-6 py-3 font-semibold text-white transition-all hover:bg-[#1ea33e]"
+            className="w-full rounded-xl px-6 py-3 font-semibold text-white transition-all"
+            style={{ backgroundColor: AF.primary }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = AF.primaryHover; }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = AF.primary; }}
           >
             Retry
           </button>

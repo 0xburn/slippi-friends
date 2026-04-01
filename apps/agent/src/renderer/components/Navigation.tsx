@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
+import { AF, IS_APRIL_FOOLS } from '../lib/aprilFools';
 
 const baseLinks = [
   { to: '/', label: 'Friends', icon: '♟' },
@@ -9,9 +10,6 @@ const baseLinks = [
   { to: '/leaderboard', label: 'Leaderboard', icon: '▲' },
   { to: '/settings', label: 'Settings', icon: '⚙' },
 ];
-
-const SHARE_BLURB =
-  'check out friendlies, a friends list for melee by Lucky 7s! see who\'s online, manage your friend list, and find new practice partners!\nhttps://luckystats.gg/friendlies';
 
 const ADMIN_CODES = ['SMOK#1', 'BF#0', 'BURN#0', 'BURN#1'];
 
@@ -51,7 +49,7 @@ export function Navigation() {
 
   async function handleShare() {
     try {
-      await window.api.copyToClipboard(SHARE_BLURB);
+      await window.api.copyToClipboard(AF.shareBlurb);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch { /* ignore */ }
@@ -62,12 +60,18 @@ export function Navigation() {
       <aside className="w-[220px] shrink-0 flex flex-col border-r border-[#2a2a2a] bg-[#0d0d0d]">
         {/* Spacer for macOS traffic lights */}
         <div className="h-[52px] shrink-0 drag" />
-        <div className="flex items-center gap-2.5 px-5 pb-4 no-drag">
-          <img src="./logo.png" alt="L7" className="w-8 h-8 rounded-lg" />
-          <span className="font-display font-bold text-base tracking-tight text-white">
-            friendlies
-          </span>
-        </div>
+        {IS_APRIL_FOOLS ? (
+          <div className="flex justify-center px-3 pb-3 no-drag">
+            <img src={AF.logo} alt="Grinder" className="w-[120px] object-contain" />
+          </div>
+        ) : (
+          <div className="flex items-center gap-2.5 px-5 pb-4 no-drag">
+            <img src={AF.logo} alt="L7" className="w-8 h-8 rounded-lg" />
+            <span className="font-display font-bold text-base tracking-tight text-white">
+              {AF.appName}
+            </span>
+          </div>
+        )}
         <nav className="flex-1 px-3 py-2 space-y-1">
           {baseLinks.filter((link) => !(link.to === '/ggs' && nudgesDisabled)).map((link) => (
             <NavLink
@@ -77,7 +81,9 @@ export function Navigation() {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   isActive
-                    ? 'bg-[#21BA45]/10 text-[#21BA45]'
+                    ? IS_APRIL_FOOLS
+                      ? 'bg-[#F5A623]/10 text-[#F5A623]'
+                      : 'bg-[#21BA45]/10 text-[#21BA45]'
                     : 'text-gray-400 hover:text-white hover:bg-white/5'
                 }`
               }
@@ -85,7 +91,7 @@ export function Navigation() {
               <span className="text-base">{link.icon}</span>
               {link.label}
               {link.to === '/ggs' && unreadNudges > 0 && (
-                <span className="ml-auto min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-[#21BA45] text-[10px] font-bold text-white px-1">
+                <span className="ml-auto min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-bold text-white px-1" style={{ backgroundColor: AF.primary }}>
                   {unreadNudges > 99 ? '99+' : unreadNudges}
                 </span>
               )}
@@ -95,13 +101,16 @@ export function Navigation() {
         <div className="px-4 pb-2">
           <button
             onClick={handleShare}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors text-[#21BA45]/70 hover:text-[#21BA45] hover:bg-[#21BA45]/10"
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors"
+            style={{ color: `${AF.primary}b3`, }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = AF.primary; e.currentTarget.style.backgroundColor = `${AF.primary}1a`; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = `${AF.primary}b3`; e.currentTarget.style.backgroundColor = ''; }}
           >
             <span className="text-sm">🔗</span>
             {copied ? 'Copied!' : 'Share with a Friend!'}
           </button>
         </div>
-        <div className="px-5 py-2 text-[10px] text-gray-600">v1.0.8</div>
+        <div className="px-5 py-2 text-[10px] text-gray-600">v1.0.9</div>
       </aside>
       <main className="flex-1 overflow-y-auto">
         <div className="h-[52px] shrink-0 drag relative">
@@ -120,33 +129,48 @@ export function Navigation() {
             )}
             {playerCount != null && (
               <div className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#21BA45] animate-pulse" />
-                <span className="text-[10px] text-gray-500">{playerCount} players on friendlies</span>
+                <span className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ backgroundColor: AF.primary }} />
+                <span className="text-[10px] text-gray-500">{playerCount} {AF.playerCountLabel}</span>
               </div>
             )}
           </div>
         </div>
         <div className="px-6 pb-6">
-          <button
-            onClick={() => window.api.openExternal('https://start.gg/fullhouse')}
-            className="mb-4 w-full rounded-xl overflow-hidden border border-[#2a5a2a]/40 bg-gradient-to-r from-[#0d1f0d] via-[#122212] to-[#0d1f0d] hover:border-[#3a7a3a]/60 transition-all group cursor-pointer"
-          >
-            <div className="flex items-center gap-4 px-5 py-2.5">
-              <img src="./siege.png" alt="Full House: Siege" className="h-10 w-10 object-contain shrink-0" />
-              <div className="flex flex-col items-start">
-                <span className="text-sm font-bold tracking-wide text-[#d4c48a]">FULL HOUSE: SIEGE</span>
-                <span className="text-[11px] text-gray-400">featuring Zain, Hungrybox, Cody Schwab, Jmook, Wizzrobe, Soonsay, RapMonster, and more!</span>
-                <span className="text-xs font-semibold text-[#21BA45]">April 24 – 26, 2026</span>
-              </div>
+          {IS_APRIL_FOOLS ? (
+            <div className="mb-4 rounded-xl border border-[#F5A623]/30 bg-[#F5A623]/5 px-5 py-4">
+              <p className="text-sm font-semibold text-[#F5A623] mb-2">⚠️ Important Notice</p>
+              <p className="text-xs text-gray-300 leading-relaxed">
+                We received a <strong className="text-white">Cease &amp; Desist</strong> due to the name of our app, <em>friendlies</em>.
+              </p>
+              <p className="text-xs text-gray-300 leading-relaxed mt-1.5">
+                As such, we have renamed the app to <strong className="text-[#F5A623]">Grinder</strong>. This better represents the types of activities people are using the app for: grinding Melee!
+              </p>
             </div>
-          </button>
+          ) : (
+            <button
+              onClick={() => window.api.openExternal('https://start.gg/fullhouse')}
+              className="mb-4 w-full rounded-xl overflow-hidden border border-[#2a5a2a]/40 bg-gradient-to-r from-[#0d1f0d] via-[#122212] to-[#0d1f0d] hover:border-[#3a7a3a]/60 transition-all group cursor-pointer"
+            >
+              <div className="flex items-center gap-4 px-5 py-2.5">
+                <img src="./siege.png" alt="Full House: Siege" className="h-10 w-10 object-contain shrink-0" />
+                <div className="flex flex-col items-start">
+                  <span className="text-sm font-bold tracking-wide text-[#d4c48a]">FULL HOUSE: SIEGE</span>
+                  <span className="text-[11px] text-gray-400">featuring Zain, Hungrybox, Cody Schwab, Jmook, Wizzrobe, Soonsay, RapMonster, and more!</span>
+                  <span className="text-xs font-semibold text-[#21BA45]">April 24 – 26, 2026</span>
+                </div>
+              </div>
+            </button>
+          )}
           {broadcast && !broadcastDismissed && (
-            <div className="mb-4 rounded-xl border border-[#21BA45]/20 bg-[#21BA45]/5 px-4 py-3 flex items-center gap-3">
+            <div className="mb-4 rounded-xl border px-4 py-3 flex items-center gap-3" style={{ borderColor: `${AF.primary}33`, backgroundColor: `${AF.primary}0d` }}>
               <span className="text-sm">📢</span>
-              <p className="flex-1 text-sm text-[#21BA45]/90 whitespace-pre-line">{broadcast}</p>
+              <p className="flex-1 text-sm whitespace-pre-line" style={{ color: `${AF.primary}e6` }}>{broadcast}</p>
               <button
                 onClick={() => setBroadcastDismissed(true)}
-                className="shrink-0 text-[#21BA45]/40 hover:text-[#21BA45] text-lg leading-none transition-colors"
+                className="shrink-0 text-lg leading-none transition-colors"
+                style={{ color: `${AF.primary}66` }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = AF.primary; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = `${AF.primary}66`; }}
               >
                 ×
               </button>

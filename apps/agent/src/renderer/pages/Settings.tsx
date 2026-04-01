@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { AF } from '../lib/aprilFools';
 
 interface SettingsState {
   replayDir: string;
@@ -563,7 +564,7 @@ export function Settings() {
       })()}
 
       <p className="text-center text-xs text-gray-600">
-      friendlies v1.0.8
+      {AF.appName} v1.0.9
       </p>
     </div>
   );
