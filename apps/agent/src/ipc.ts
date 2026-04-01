@@ -178,25 +178,57 @@ export function registerIpcHandlers(
 ): void {
   mainWindow = win;
 
-  // Refresh own player_ratings entry daily (non-blocking, after auth settles)
-  const RATING_STALE_MS = 24 * 60 * 60 * 1000;
+  const RATING_STALE_MS = 6 * 60 * 60 * 1000; // 6 hours
   setTimeout(async () => {
     try {
       const user = await getCurrentUser();
       if (!user) return;
       const identity = getIdentity();
       if (!identity?.connectCode) return;
-      const code = identity.connectCode;
-      const { data } = await supabase.from('player_ratings').select('fetched_at').eq('connect_code', code).single();
-      if (data?.fetched_at && (Date.now() - new Date(data.fetched_at).getTime()) < RATING_STALE_MS) return;
-      console.log('[ratings] refreshing own rating for', code);
-      const entry = await fetchSlippiRating(code);
-      if (entry) {
-        slippiRatingCache.set(code, entry);
-        void upsertPlayerRating(code, entry);
+
+      // Collect own code + all friend codes
+      const ownCode = identity.connectCode;
+      const { data: friendRows } = await supabase
+        .from('friends')
+        .select('friend_connect_code')
+        .eq('user_id', user.id)
+        .eq('status', 'accepted');
+      const friendCodes: string[] = (friendRows ?? [])
+        .map((f: any) => f.friend_connect_code)
+        .filter(Boolean);
+      const allCodes = [ownCode, ...friendCodes];
+
+      // Find which ratings are stale or missing
+      const { data: existing } = await supabase
+        .from('player_ratings')
+        .select('connect_code, fetched_at')
+        .in('connect_code', allCodes);
+      const fetchedMap = new Map<string, string>();
+      (existing ?? []).forEach((r: any) => { fetchedMap.set(r.connect_code, r.fetched_at); });
+
+      const now = Date.now();
+      const staleCodes = allCodes.filter((c) => {
+        const fetched = fetchedMap.get(c);
+        return !fetched || (now - new Date(fetched).getTime()) >= RATING_STALE_MS;
+      });
+
+      if (staleCodes.length === 0) return;
+      console.log(`[ratings] startup refresh: ${staleCodes.length} stale of ${allCodes.length} total`);
+
+      const CONCURRENCY = 5;
+      for (let i = 0; i < staleCodes.length; i += CONCURRENCY) {
+        const batch = staleCodes.slice(i, i + CONCURRENCY);
+        const entries = await Promise.all(batch.map(fetchSlippiRating));
+        for (let j = 0; j < batch.length; j++) {
+          if (entries[j]) {
+            slippiRatingCache.set(batch[j], entries[j]!);
+            void upsertPlayerRating(batch[j], entries[j]!);
+          }
+        }
       }
+      console.log(`[ratings] startup refresh complete`);
     } catch (e) {
-      console.error('[ratings] daily refresh failed', e);
+      console.error('[ratings] startup refresh failed', e);
     }
   }, 10_000);
 

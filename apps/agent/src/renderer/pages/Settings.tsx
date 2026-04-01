@@ -202,14 +202,26 @@ export function Settings() {
               }}
             >
               <option value="">Auto-detect</option>
-              <optgroup label="North America">
-                {['MDVA','Tristate','New England','Florida','NorCal','Central Cal','SoCal','Pacific Northwest','Midwest','Southwest','South','Canada','Mexico'].map((s) => <option key={s} value={s}>{s}</option>)}
+              <optgroup label="United States">
+                {['MDVA','Tristate','New England','Florida','NorCal','Central Cal','SoCal','Pacific Northwest','Midwest','Southwest','South'].map((s) => <option key={s} value={s}>{s}</option>)}
+              </optgroup>
+              <optgroup label="Canada">
+                {['British Columbia','Alberta','Saskatchewan','Manitoba','Ontario','Quebec','Atlantic Canada (NB/NS/PEI/NFLD)'].map((s) => <option key={s} value={s}>{s}</option>)}
+              </optgroup>
+              <optgroup label="Latin America">
+                {['Mexico'].map((s) => <option key={s} value={s}>{s}</option>)}
               </optgroup>
               <optgroup label="Europe">
-                {['UK','Ireland','Germany','Sweden','France','Netherlands','Norway','Spain','EU'].map((s) => <option key={s} value={s}>{s}</option>)}
+                {['UK','Ireland','Germany','Sweden','France','Netherlands','Norway','Denmark','Finland','Spain','Portugal','Italy','Poland','Austria','Switzerland','EU'].map((s) => <option key={s} value={s}>{s}</option>)}
+              </optgroup>
+              <optgroup label="Oceania">
+                {['NSW','VIC','QLD','WA','SA','TAS','ACT','NT','New Zealand'].map((s) => <option key={s} value={s}>{s}</option>)}
               </optgroup>
               <optgroup label="Asia">
-                {['Japan'].map((s) => <option key={s} value={s}>{s}</option>)}
+                {['Japan','South Korea','Philippines','Southeast Asia'].map((s) => <option key={s} value={s}>{s}</option>)}
+              </optgroup>
+              <optgroup label="Other">
+                {['South America','Middle East','Africa'].map((s) => <option key={s} value={s}>{s}</option>)}
               </optgroup>
             </select>
           </div>
@@ -564,7 +576,7 @@ export function Settings() {
       })()}
 
       <p className="text-center text-xs text-gray-600">
-      {AF.appName} v1.0.9
+      {AF.appName} v1.0.10
       </p>
     </div>
   );
