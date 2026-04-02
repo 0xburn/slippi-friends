@@ -2,11 +2,10 @@ import { useEffect, useState, useMemo } from 'react';
 import { ConnectionTypeIcon } from '../components/ConnectionTypeIcon';
 import { OnlineIndicator } from '../components/OnlineIndicator';
 import { PlayerCard } from '../components/PlayerCard';
-import { RankBadge, ToxicBadge } from '../components/RankBadge';
+import { RankBadge } from '../components/RankBadge';
 import { CharacterIcon } from '../components/CharacterIcon';
 import { CHARACTER_MAP, getCharacterImagePath, getCharacterShortName } from '../lib/characters';
 import { getRankTier } from '../lib/ranks';
-import { IS_APRIL_FOOLS, ARMADA_PLAYER, isToxic } from '../lib/aprilFools';
 
 function DiscordIcon({ className }: { className?: string }) {
   return (
@@ -668,7 +667,6 @@ export function Friends() {
                   {total > 0 && (
                     <span className="text-xs text-gray-600">{wins}W {losses}L</span>
                   )}
-                  {IS_APRIL_FOOLS && <ToxicBadge />}
                 </div>
               </div>
             </div>
@@ -1313,26 +1311,6 @@ export function Friends() {
           </div>
         )}
 
-        {IS_APRIL_FOOLS && (
-          <PlayerCard
-            key="af-armada"
-            player={{
-              connectCode: ARMADA_PLAYER.connectCode,
-              displayName: ARMADA_PLAYER.displayName,
-              avatarUrl: ARMADA_PLAYER.avatarUrl,
-              region: ARMADA_PLAYER.region,
-              rating: ARMADA_PLAYER.rating,
-              characterId: ARMADA_PLAYER.characterId,
-              topCharacters: ARMADA_PLAYER.topCharacters,
-              status: ARMADA_PLAYER.status,
-              lookingToPlay: ARMADA_PLAYER.lookingToPlay,
-              statusPreset: ARMADA_PLAYER.statusPreset,
-              connectionType: ARMADA_PLAYER.connectionType,
-            }}
-            rankOverride="Master 4"
-            onClick={() => handleCopy(ARMADA_PLAYER.connectCode)}
-          />
-        )}
         {accepted.slice(0, visibleCount).map((f) => {
           const invState = inviteSent[f.connectCode];
           const nudgeMsg = nudgeSent[f.connectCode];
@@ -1366,7 +1344,6 @@ export function Friends() {
               nudgeOptions={disableNudges ? undefined : NUDGE_OPTIONS}
               onNudge={disableNudges ? undefined : (msg) => handleNudge(f.connectCode, msg)}
               nudgeState={nudgeMsg ?? null}
-              toxic={isToxic(f.connectCode)}
             />
           );
         })}
