@@ -1676,6 +1676,14 @@ export function registerIpcHandlers(
 
   ipcMain.handle('shell:openExternal', (_e, url: string) => shell.openExternal(url));
 
+  ipcMain.handle('banner:click', async (_e, banner: string) => {
+    try {
+      const user = await getCurrentUser();
+      if (!user) return;
+      await supabase.from('banner_clicks').insert({ user_id: user.id, banner });
+    } catch { /* fire-and-forget */ }
+  });
+
   let discordProtocolSupported: boolean | null = null;
   (async () => {
     const { exec } = require('child_process');

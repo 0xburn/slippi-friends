@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { CharacterIcon } from '../components/CharacterIcon';
 import { PlayerStatsPanel } from '../components/PlayerStatsPanel';
+import { RankBadge } from '../components/RankBadge';
 
 const TWO_DAYS = 2 * 24 * 60 * 60 * 1000;
 const ONE_WEEK = 7 * 24 * 60 * 60 * 1000;
@@ -115,11 +116,13 @@ function SessionRow({
   onAddFriend,
   friendState,
   discordUsername,
+  rating,
 }: {
   session: Session;
   onAddFriend?: (code: string) => void;
   friendState: 'none' | 'adding' | 'pending' | 'friends';
   discordUsername?: string | null;
+  rating?: number | null;
 }) {
   const [expanded, setExpanded] = useState(false);
   const total = session.wins + session.losses;
@@ -171,6 +174,7 @@ function SessionRow({
             {session.opponentName && (
               <p className="text-xs text-gray-500 truncate">{session.opponentName}</p>
             )}
+            <RankBadge rating={rating ?? null} />
             {friendState === 'friends' && discordUsername && (
               <span className="inline-flex items-center gap-1 text-xs text-[#5865F2]/70">
                 <DiscordIcon className="w-3 h-3" />
@@ -245,6 +249,8 @@ export function Opponents() {
   const [modeFilter, setModeFilter] = useState<ModeFilter>('all');
   const [matches, setMatches] = useState<Match[]>([]);
   const [friendMap, setFriendMap] = useState<Map<string, { status: 'pending' | 'accepted'; discordUsername?: string | null }>>(new Map());
+  const [ratingMap, setRatingMap] = useState<Map<string, number | null>>(new Map());
+  const ratingFetching = useRef(new Set<string>());
   const [adding, setAdding] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -402,6 +408,18 @@ export function Opponents() {
     : matches.filter((m) => m.game_mode === modeFilter);
   const sessions = groupIntoSessions(filteredMatches);
 
+  useEffect(() => {
+    const codes = new Set(sessions.map((s) => s.opponentCode));
+    for (const code of codes) {
+      if (ratingMap.has(code) || ratingFetching.current.has(code)) continue;
+      ratingFetching.current.add(code);
+      window.api.lookupSlippiPlayer(code).then((data: any) => {
+        ratingFetching.current.delete(code);
+        setRatingMap((prev) => new Map(prev).set(code, data?.rankedRating ?? null));
+      }).catch(() => { ratingFetching.current.delete(code); });
+    }
+  }, [sessions.map((s) => s.opponentCode).join(',')]);
+
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center justify-between">
@@ -480,6 +498,7 @@ export function Opponents() {
             onAddFriend={friendState(s.opponentCode) === 'none' ? handleAddFriend : undefined}
             friendState={friendState(s.opponentCode)}
             discordUsername={getDiscordUsername(s.opponentCode)}
+            rating={ratingMap.get(s.opponentCode)}
           />
         ))}
         {backgroundScanning && matches.length > 0 && (

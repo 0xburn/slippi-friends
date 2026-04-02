@@ -101,7 +101,7 @@ export function Navigation() {
             {copied ? 'Copied!' : 'Share with a Friend!'}
           </button>
         </div>
-        <div className="px-5 py-2 text-[10px] text-gray-600">v1.0.11</div>
+        <div className="px-5 py-2 text-[10px] text-gray-600">v1.0.12</div>
       </aside>
       <main className="flex-1 overflow-y-auto">
         <div className="h-[52px] shrink-0 drag relative">
@@ -128,7 +128,7 @@ export function Navigation() {
         </div>
         <div className="px-6 pb-6">
           <button
-            onClick={() => window.api.openExternal('https://start.gg/fullhouse')}
+            onClick={() => { window.api.trackBannerClick('fullhouse_siege'); window.api.openExternal('https://start.gg/fullhouse'); }}
             className="mb-4 w-full rounded-xl overflow-hidden border border-[#2a5a2a]/40 bg-gradient-to-r from-[#0d1f0d] via-[#122212] to-[#0d1f0d] hover:border-[#3a7a3a]/60 transition-all group cursor-pointer"
           >
             <div className="flex items-center gap-4 px-5 py-2.5">

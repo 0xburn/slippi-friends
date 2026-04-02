@@ -104,6 +104,7 @@ const api = {
   getUnreadNudgeCount: () => ipcRenderer.invoke('nudge:unreadCount') as Promise<number>,
   onUnreadNudgeCount: (cb: (count: number) => void): Unsubscribe => onEvent('nudge:unreadCount', cb),
 
+  trackBannerClick: (banner: string) => ipcRenderer.invoke('banner:click', banner),
   testNotification: () => ipcRenderer.invoke('notifications:test'),
 };
 
