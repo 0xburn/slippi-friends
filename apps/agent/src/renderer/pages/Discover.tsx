@@ -15,7 +15,7 @@ interface DiscoverPlayer {
   rating: number | null;
   topCharacters: { characterId: number; gameCount: number }[];
   region: string | null;
-  status: 'online' | 'in-game';
+  status: 'online' | 'in-game' | 'idle';
   currentCharacter: number | null;
   opponentCode: string | null;
   playingSince: string | null;
@@ -23,6 +23,7 @@ interface DiscoverPlayer {
   lastPlayedAt: string | null;
   lookingToPlay?: boolean;
   statusPreset?: string | null;
+  mutualFriendCount?: number;
 }
 
 function formatLastPlayed(iso: string): string {
@@ -747,6 +748,7 @@ export function Discover() {
                   connectionType: p.connectionType ?? undefined,
                   lookingToPlay: p.lookingToPlay,
                   statusPreset: p.statusPreset,
+                  mutualFriendCount: p.mutualFriendCount,
                 }}
                 onClick={() => handleCopy(p.connectCode)}
                 onBlock={() => setConfirmBlock(p.connectCode)}

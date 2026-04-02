@@ -6,9 +6,10 @@ import { getDirectConnectService } from './direct-connect';
 import { getIdentity, verifyIdentity } from './identity';
 import { getCachedGeo } from './geo-cache';
 import { resolvePresenceRow } from './presence-logic';
-import { getConnectionType, getCurrentStatus, getLfgExpiry, getOnlineUsers, getPresenceStats, getStatusPreset, isLookingToPlay, onLocalStatusChange, onPresenceSync, setHideConnectionType, setHideOnlineStatus, setLfgExpiry, setStatusPreset, toggleLookingToPlay } from './presence';
+import { getConnectionType, getLfgExpiry, getLocalStatusSnapshot, getOnlineUsers, getPresenceStats, getStatusPreset, isLookingToPlay, onLocalStatusChange, onPresenceSync, setHideConnectionType, setHideOnlineStatus, setLfgExpiry, setRendererDocumentHidden, setStatusPreset, toggleLookingToPlay } from './presence';
 import { showTestNotification } from './notifications';
 import { getSettings, isSetupComplete, updateSettings, type AgentSettings } from './settings';
+import { updateTrayStatus } from './tray';
 import { supabase } from './supabase';
 import { checkForUpdates, downloadUpdate, quitAndInstall } from './updater';
 import { backfillRecentReplays } from './watcher';
@@ -177,6 +178,11 @@ export function registerIpcHandlers(
   opts?: { onLogout?: () => Promise<void> },
 ): void {
   mainWindow = win;
+
+  ipcMain.on('visibility:document', (_e, hidden: unknown) => {
+    if (typeof hidden === 'boolean') setRendererDocumentHidden(hidden);
+    updateTrayStatus();
+  });
 
   const RATING_STALE_MS = 6 * 60 * 60 * 1000; // 6 hours
   setTimeout(async () => {
@@ -1035,7 +1041,7 @@ export function registerIpcHandlers(
   });
 
   ipcMain.handle('presence:online', () => getOnlineUsers());
-  ipcMain.handle('presence:localStatus', () => getCurrentStatus());
+  ipcMain.handle('presence:localStatus', () => getLocalStatusSnapshot());
   ipcMain.handle('presence:connectionType', () => getConnectionType());
   ipcMain.handle('stats:presence', () => getPresenceStats());
   ipcMain.handle('presence:toggleLookingToPlay', () => toggleLookingToPlay());
@@ -1063,7 +1069,7 @@ export function registerIpcHandlers(
       if (friendIds.length === 0) return {};
 
       const { data } = await supabase.from('presence_log')
-        .select('user_id, status, current_character, opponent_code, playing_since, looking_to_play, looking_to_play_since, status_preset, connection_type, updated_at')
+        .select('user_id, status, current_character, opponent_code, playing_since, looking_to_play, looking_to_play_since, status_preset, connection_type, app_idle, updated_at')
         .in('user_id', friendIds);
       if (!data) return {};
       const t3 = performance.now();
@@ -1121,7 +1127,7 @@ export function registerIpcHandlers(
       const cutoff = new Date(Date.now() - PRESENCE_STALE_THRESHOLD).toISOString();
       const { data: presenceRows } = await supabase
         .from('presence_log')
-        .select('user_id, status, current_character, opponent_code, playing_since, looking_to_play, looking_to_play_since, status_preset, connection_type, updated_at')
+        .select('user_id, status, current_character, opponent_code, playing_since, looking_to_play, looking_to_play_since, status_preset, connection_type, app_idle, updated_at')
         .in('status', ['online', 'in-game'])
         .gte('updated_at', cutoff);
       if (!presenceRows || presenceRows.length === 0) return [];
@@ -1230,10 +1236,10 @@ export function registerIpcHandlers(
               return resolved;
             })(),
             region: p.hide_region ? null : (p.chosen_region || p.region || null),
-            status: r.status,
-            currentCharacter: r.current_character,
-            opponentCode: r.opponent_code,
-            playingSince: r.playing_since,
+            status: resolved.status,
+            currentCharacter: resolved.currentCharacter,
+            opponentCode: resolved.opponentCode,
+            playingSince: resolved.playingSince,
             connectionType: p.hide_connection_type ? null : resolved.connectionType,
             updatedAt: r.updated_at,
             lastPlayedAt: matchHistoryMap[p.connect_code] || null,
@@ -1274,8 +1280,27 @@ export function registerIpcHandlers(
       });
 
       const final = results.slice(0, 50);
-      console.log(`[bench] discover:list total=${(performance.now()-t0).toFixed(0)}ms (auth=${(t1-t0).toFixed(0)} context=${(t2-t1).toFixed(0)} presence=${(t3-t2).toFixed(0)} profiles=${(t4-t3).toFixed(0)} ratings=${(t5-t4).toFixed(0)} matches=${(t6-t5).toFixed(0)} candidates=${candidateIds.length} results=${final.length} missingRatings=${missingCodes.length})`);
-      return final;
+
+      const mutualMap = new Map<string, number>();
+      if (final.length > 0) {
+        const ids = final.map((r: any) => r.userId).filter(Boolean);
+        const { data: mutualRows } = await supabase.rpc('discover_mutual_friend_counts', {
+          p_candidate_ids: ids,
+        });
+        if (Array.isArray(mutualRows)) {
+          for (const row of mutualRows as { candidate_id: string; mutual_count: number }[]) {
+            if (row.candidate_id) mutualMap.set(row.candidate_id, row.mutual_count ?? 0);
+          }
+        }
+      }
+
+      const withMutuals = final.map((r: any) => ({
+        ...r,
+        mutualFriendCount: mutualMap.get(r.userId) ?? 0,
+      }));
+
+      console.log(`[bench] discover:list total=${(performance.now()-t0).toFixed(0)}ms (auth=${(t1-t0).toFixed(0)} context=${(t2-t1).toFixed(0)} presence=${(t3-t2).toFixed(0)} profiles=${(t4-t3).toFixed(0)} ratings=${(t5-t4).toFixed(0)} matches=${(t6-t5).toFixed(0)} candidates=${candidateIds.length} results=${withMutuals.length} missingRatings=${missingCodes.length})`);
+      return withMutuals;
     } catch (e) { console.error('discover:list', e); return []; }
     })();
     try { return await discoverInFlight; } finally { discoverInFlight = null; }

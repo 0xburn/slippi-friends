@@ -4,6 +4,7 @@ import { execFile } from 'child_process';
 import * as os from 'os';
 
 import {
+  APP_IDLE_AFTER_MS,
   DOLPHIN_PROCESS_NAMES,
   IN_GAME_POLL_INTERVAL,
   OPPONENT_RECENT_THRESHOLD,
@@ -104,8 +105,12 @@ export interface OnlineUser {
   updatedAt: string;
 }
 
+export type LocalDisplayStatus = 'offline' | 'online' | 'in-game' | 'idle';
+
 export interface LocalStatus {
   status: PresenceStatus;
+  /** Slippi + app visibility (idle when online but friendlies backgrounded 30m+) */
+  displayStatus: LocalDisplayStatus;
   opponentCode: string | null;
   opponentCharacterId: number | null;
   playingSince: string | null;
@@ -140,8 +145,86 @@ let subscribeGeneration = 0;
 let lastPushedStatus: PresenceStatus = 'offline';
 let lastPushedCharacter: number | null = null;
 let lastPushedOpponentCode: string | null = null;
+let lastPushedAppIdle = false;
 let lastDbWriteTime = 0;
 const DB_HEARTBEAT_INTERVAL = 150_000;
+
+/** Page Visibility (`document.hidden`) — often stays false in Electron when alt-tabbing. */
+let rendererDocumentHidden = false;
+/** BrowserWindow focus — primary signal for “clicked away” on desktop. */
+let mainWindowFocused = true;
+/** First moment we were either hidden or unfocused; null = user is engaged with the window. */
+let awaySince: number | null = null;
+/** Fires once when away duration crosses APP_IDLE_AFTER_MS (blur events alone do not repeat). */
+let idleBoundaryTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearIdleBoundaryTimer(): void {
+  if (idleBoundaryTimer != null) {
+    clearTimeout(idleBoundaryTimer);
+    idleBoundaryTimer = null;
+  }
+}
+
+function scheduleIdleBoundaryTimer(): void {
+  clearIdleBoundaryTimer();
+  idleBoundaryTimer = setTimeout(() => {
+    idleBoundaryTimer = null;
+    emitLocalStatus();
+    if (loopUserId) {
+      void pushPresence(currentStatus, loopConnectCode, loopDisplayName, loopUserId);
+    }
+  }, APP_IDLE_AFTER_MS);
+}
+
+function reconcileAwayState(): void {
+  const away = rendererDocumentHidden || !mainWindowFocused;
+  if (away) {
+    if (awaySince === null) {
+      awaySince = Date.now();
+      scheduleIdleBoundaryTimer();
+    }
+  } else {
+    awaySince = null;
+    clearIdleBoundaryTimer();
+  }
+}
+
+function computeAppIdleForDb(): boolean {
+  if (currentStatus === 'offline') return false;
+  if (awaySince == null) return false;
+  if (Date.now() - awaySince < APP_IDLE_AFTER_MS) return false;
+  if (currentStatus === 'online') return true;
+  if (currentStatus === 'in-game') {
+    return !_isOpponentRecent(lastOpponentCode, lastOpponentTimestamp, OPPONENT_RECENT_THRESHOLD);
+  }
+  return false;
+}
+
+function computeLocalDisplayStatus(): LocalDisplayStatus {
+  if (currentStatus === 'offline') return 'offline';
+  const awayIdle = awaySince != null && Date.now() - awaySince >= APP_IDLE_AFTER_MS;
+  if (currentStatus === 'in-game') {
+    const inActiveMatch = _isOpponentRecent(
+      lastOpponentCode,
+      lastOpponentTimestamp,
+      OPPONENT_RECENT_THRESHOLD,
+    );
+    if (inActiveMatch) return 'in-game';
+    if (awayIdle) return 'idle';
+    return 'in-game';
+  }
+  if (currentStatus === 'online') return awayIdle ? 'idle' : 'online';
+  return 'offline';
+}
+
+/** Tray icon uses Slippi status; menu line reflects idle. */
+export function getTrayContext(): { icon: PresenceStatus; statusLine: string } {
+  const d = computeLocalDisplayStatus();
+  if (d === 'offline') return { icon: 'offline', statusLine: 'Away' };
+  if (d === 'in-game') return { icon: 'in-game', statusLine: 'In Game' };
+  if (d === 'idle') return { icon: 'online', statusLine: 'Idle (app in background)' };
+  return { icon: 'online', statusLine: 'Online' };
+}
 
 let currentConnectionType: ConnectionType = null;
 let hideConnectionType = false;
@@ -209,6 +292,42 @@ export function setLastOpponent(connectCode: string, characterId?: number): void
 
 export function getCurrentStatus(): PresenceStatus {
   return currentStatus;
+}
+
+export function getLocalStatusSnapshot(): LocalStatus {
+  const opponent = currentStatus === 'in-game' ? getRecentOpponent() : null;
+  return {
+    status: currentStatus,
+    displayStatus: computeLocalDisplayStatus(),
+    opponentCode: opponent?.code ?? null,
+    opponentCharacterId: opponent ? lastOpponentCharacterId : null,
+    playingSince: opponent?.since ?? null,
+    characterId: lastCharacterId,
+  };
+}
+
+/** Called from renderer when `document.hidden` changes. */
+export function setRendererDocumentHidden(hidden: boolean): void {
+  if (rendererDocumentHidden === hidden) return;
+  rendererDocumentHidden = hidden;
+  reconcileAwayState();
+  lastDbWriteTime = 0;
+  emitLocalStatus();
+  if (loopUserId) {
+    void pushPresence(currentStatus, loopConnectCode, loopDisplayName, loopUserId);
+  }
+}
+
+/** Called from main when `BrowserWindow` blurs/focuses (reliable when alt-tabbing in Electron). */
+export function setMainWindowFocused(focused: boolean): void {
+  if (mainWindowFocused === focused) return;
+  mainWindowFocused = focused;
+  reconcileAwayState();
+  lastDbWriteTime = 0;
+  emitLocalStatus();
+  if (loopUserId) {
+    void pushPresence(currentStatus, loopConnectCode, loopDisplayName, loopUserId);
+  }
 }
 
 export function getPresenceStats() {
@@ -303,6 +422,7 @@ function emitLocalStatus(): void {
   const opponent = currentStatus === 'in-game' ? getRecentOpponent() : null;
   const info: LocalStatus = {
     status: currentStatus,
+    displayStatus: computeLocalDisplayStatus(),
     opponentCode: opponent?.code ?? null,
     opponentCharacterId: opponent ? lastOpponentCharacterId : null,
     playingSince: opponent?.since ?? null,
@@ -378,7 +498,9 @@ async function pushPresence(
     const character = status === 'in-game' ? lastCharacterId : null;
     const opCode = opponent?.code ?? null;
 
-    const dirty = _isDirty(status, character, opCode, lastPushedStatus, lastPushedCharacter, lastPushedOpponentCode);
+    const nextAppIdle = computeAppIdleForDb();
+    const dirtyPresence = _isDirty(status, character, opCode, lastPushedStatus, lastPushedCharacter, lastPushedOpponentCode);
+    const dirty = dirtyPresence || (nextAppIdle !== lastPushedAppIdle);
     const now = Date.now();
     const shouldWriteDb = _shouldWriteDb(dirty, lastDbWriteTime, DB_HEARTBEAT_INTERVAL, now);
 
@@ -398,6 +520,7 @@ async function pushPresence(
         looking_to_play_since: lfgActive ? lookingToPlaySince : null,
         status_preset: lfgActive ? statusPreset : null,
         connection_type: hideConnectionType ? null : currentConnectionType,
+        app_idle: nextAppIdle,
         updated_at: new Date().toISOString(),
       };
 
@@ -421,6 +544,7 @@ async function pushPresence(
                 user_id: userId,
                 status,
                 current_character: lastCharacterId,
+                app_idle: nextAppIdle,
                 updated_at: new Date().toISOString(),
               },
               { onConflict: 'user_id' },
@@ -442,6 +566,7 @@ async function pushPresence(
           }
         }
         lastDbWriteTime = now;
+        lastPushedAppIdle = nextAppIdle;
         presenceStats.upsertOk++;
       }
     }
@@ -461,10 +586,11 @@ async function pushPresence(
 
     if (!presenceChannel || !subscribed) return;
 
+    const trackStatus = nextAppIdle ? 'idle' : status;
     const payload: Record<string, any> = {
       connectCode,
       displayName,
-      status,
+      status: trackStatus,
       currentCharacter: character,
       opponentCode: opCode,
       playingSince: opponent?.since ?? null,
@@ -738,6 +864,11 @@ export async function stopPresenceLoop(): Promise<void> {
     lastPushedStatus = 'offline';
     lastPushedCharacter = null;
     lastPushedOpponentCode = null;
+    lastPushedAppIdle = false;
+    rendererDocumentHidden = false;
+    mainWindowFocused = true;
+    awaySince = null;
+    clearIdleBoundaryTimer();
     lastDbWriteTime = 0;
   } catch (e) {
     console.error('stopPresenceLoop failed', e);
@@ -753,6 +884,11 @@ export async function pushOfflineAndStop(): Promise<void> {
     lastPushedStatus = 'offline';
     lastPushedCharacter = null;
     lastPushedOpponentCode = null;
+    lastPushedAppIdle = false;
+    rendererDocumentHidden = false;
+    mainWindowFocused = true;
+    awaySince = null;
+    clearIdleBoundaryTimer();
     lastDbWriteTime = 0;
 
     lookingToPlay = false;
@@ -771,6 +907,7 @@ export async function pushOfflineAndStop(): Promise<void> {
           looking_to_play: false,
           looking_to_play_since: null,
           status_preset: null,
+          app_idle: false,
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'user_id' },

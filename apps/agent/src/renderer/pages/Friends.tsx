@@ -27,7 +27,7 @@ interface Friend {
   rating: number | null;
   characterId: number | null;
   topCharacters?: { characterId: number; gameCount: number }[];
-  status?: 'online' | 'in-game' | 'offline';
+  status?: 'online' | 'in-game' | 'offline' | 'idle';
   onApp?: boolean;
   friendStatus?: 'pending' | 'accepted';
 }
@@ -85,7 +85,7 @@ export function Friends() {
   const [incomingHidden, setIncomingHidden] = useState(() => localStorage.getItem('incomingHidden') === '1');
   const [blocking, setBlocking] = useState<string | null>(null);
 
-  const [myStatus, setMyStatus] = useState<'online' | 'in-game' | 'offline'>('offline');
+  const [myStatus, setMyStatus] = useState<'online' | 'in-game' | 'offline' | 'idle'>('offline');
   const [lfg, setLfg] = useState(false);
   const [lfgToggling, setLfgToggling] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'online' | 'in-game' | 'offline'>('all');
@@ -154,7 +154,11 @@ export function Friends() {
       }
     });
     window.api.getLocalStatus().then((s: any) => {
-      if (s) setMyStatus(s === 'in-game' ? 'in-game' : s === 'online' ? 'online' : 'offline');
+      if (s && typeof s === 'object' && s.displayStatus) {
+        setMyStatus(s.displayStatus);
+      } else if (typeof s === 'string') {
+        setMyStatus(s === 'in-game' ? 'in-game' : s === 'online' ? 'online' : 'offline');
+      }
     });
     window.api.isLookingToPlay().then((v: boolean) => setLfg(v));
     window.api.getStatusPreset().then((v: string | null) => setMyStatusPreset(v));
@@ -196,7 +200,7 @@ export function Friends() {
     });
 
     const unsubStatus = window.api.onLocalStatus((info: any) => {
-      setMyStatus(info.status || 'online');
+      setMyStatus(info.displayStatus || info.status || 'online');
       setMyOpponentCode(info.opponentCode ?? null);
       setMyOppCharId(info.opponentCharacterId ?? null);
       setMyPlayingSince(info.playingSince ?? null);
@@ -361,7 +365,7 @@ export function Friends() {
     if (statusFilter !== 'all') {
       list = list.filter((f) => {
         const s = f.status || 'offline';
-        if (statusFilter === 'online') return s === 'online' || s === 'in-game';
+        if (statusFilter === 'online') return s === 'online' || s === 'in-game' || s === 'idle';
         return s === statusFilter;
       });
     }
@@ -379,7 +383,7 @@ export function Friends() {
       const s = f.status || 'offline';
       if (s === 'in-game' && f.currentCharacter != null) return 0;
       if (s === 'in-game') return 1;
-      if (s === 'online') return 2;
+      if (s === 'online' || s === 'idle') return 2;
       return 3;
     }
     const sorted = [...list].sort((a, b) => sortScore(a) - sortScore(b));

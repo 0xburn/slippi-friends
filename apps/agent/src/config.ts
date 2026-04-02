@@ -23,6 +23,8 @@ export const IN_GAME_POLL_INTERVAL = 60_000;
 export const REPLAY_ACTIVE_THRESHOLD = 30_000;
 export const OPPONENT_RECENT_THRESHOLD = 10 * 60 * 1000;
 export const PRESENCE_STALE_THRESHOLD = 5 * 60 * 1000;
+/** Friendlies unfocused/hidden long enough while “available” → idle for friends (`presence_log.app_idle`). */
+export const APP_IDLE_AFTER_MS = 30 * 60 * 1000;
 export const APP_PROTOCOL = 'slippi-friends';
 
 function readLauncherVariant(): { isMainline: boolean; betaSuffix: string } {

@@ -1,10 +1,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { Menu, Tray, nativeImage } from 'electron';
-import type { PresenceStatus } from './presence';
+import { getTrayContext, type PresenceStatus } from './presence';
 
 let tray: Tray | null = null;
-let getStatusFn: () => PresenceStatus = () => 'offline';
 
 type TrayHandlers = {
   onShowWindow: () => void;
@@ -32,11 +31,10 @@ function loadIcon(kind: PresenceStatus): Electron.NativeImage {
 }
 
 function buildMenu(): Menu {
-  const status = getStatusFn();
-  const statusLabel = status === 'in-game' ? 'In Game' : status === 'online' ? 'Online' : 'Away';
+  const { statusLine } = getTrayContext();
 
   return Menu.buildFromTemplate([
-    { label: `Status: ${statusLabel}`, enabled: false },
+    { label: `Status: ${statusLine}`, enabled: false },
     { type: 'separator' },
     { label: 'Show friendlies', click: () => handlers.onShowWindow() },
     { type: 'separator' },
@@ -44,19 +42,18 @@ function buildMenu(): Menu {
   ]);
 }
 
-export function createTray(getStatus: () => PresenceStatus, h: TrayHandlers): void {
-  getStatusFn = getStatus;
+export function createTray(h: TrayHandlers): void {
   handlers = h;
-  const img = loadIcon(getStatus());
+  const img = loadIcon(getTrayContext().icon);
   tray = new Tray(img);
   tray.setToolTip('friendlies');
   tray.setContextMenu(buildMenu());
   tray.on('click', () => handlers.onShowWindow());
 }
 
-export function updateTrayStatus(status: PresenceStatus): void {
+export function updateTrayStatus(): void {
   if (!tray) return;
-  tray.setImage(loadIcon(status));
+  tray.setImage(loadIcon(getTrayContext().icon));
   tray.setContextMenu(buildMenu());
 }
 

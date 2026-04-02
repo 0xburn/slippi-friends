@@ -160,6 +160,39 @@ describe('resolvePresenceRow', () => {
     expect(result.currentCharacter).toBeNull();
     expect(result.opponentCode).toBeNull();
   });
+
+  it('maps online + app_idle to idle display status', () => {
+    const now = Date.now();
+    const row = {
+      status: 'online',
+      app_idle: true,
+      updated_at: new Date(now - 1000).toISOString(),
+    };
+    expect(resolvePresenceRow(row, threshold, now).status).toBe('idle');
+  });
+
+  it('in-game + app_idle + opponent stays in-game', () => {
+    const now = Date.now();
+    const row = {
+      status: 'in-game',
+      app_idle: true,
+      opponent_code: 'OPP#1',
+      current_character: 2,
+      updated_at: new Date(now - 1000).toISOString(),
+    };
+    expect(resolvePresenceRow(row, threshold, now).status).toBe('in-game');
+  });
+
+  it('in-game + app_idle + no opponent maps to idle', () => {
+    const now = Date.now();
+    const row = {
+      status: 'in-game',
+      app_idle: true,
+      current_character: 2,
+      updated_at: new Date(now - 1000).toISOString(),
+    };
+    expect(resolvePresenceRow(row, threshold, now).status).toBe('idle');
+  });
 });
 
 describe('normalizeConnectCode', () => {

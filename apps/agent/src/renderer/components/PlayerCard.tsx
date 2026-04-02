@@ -24,13 +24,14 @@ interface PlayerCardProps {
     characterId?: number | null;
     topCharacters?: { characterId: number; gameCount: number }[];
     region?: string | null;
-    status?: 'online' | 'in-game' | 'offline';
+    status?: 'online' | 'in-game' | 'offline' | 'idle';
     currentCharacter?: number | null;
     opponentCode?: string | null;
     playingSince?: string | null;
     lookingToPlay?: boolean;
     statusPreset?: string | null;
     connectionType?: 'wifi' | 'ethernet' | null;
+    mutualFriendCount?: number;
   };
   showStatus?: boolean;
   expandable?: boolean;
@@ -63,6 +64,7 @@ function playerCardAreEqual(prev: PlayerCardProps, next: PlayerCardProps): boole
     pp.statusPreset === np.statusPreset &&
     pp.connectionType === np.connectionType &&
     pp.region === np.region &&
+    pp.mutualFriendCount === np.mutualFriendCount &&
     pp.displayName === np.displayName &&
     pp.discordUsername === np.discordUsername &&
     pp.avatarUrl === np.avatarUrl &&
@@ -155,6 +157,11 @@ export const PlayerCard = memo(function PlayerCard({ player, showStatus = true, 
             )}
             {player.region && (
               <span className="text-[10px] text-gray-600 truncate">{player.region}</span>
+            )}
+            {player.mutualFriendCount != null && player.mutualFriendCount > 0 && (
+              <span className="text-[10px] text-[#21BA45]/70 shrink-0" title="Accepted friends you share">
+                {player.mutualFriendCount} mutual friend{player.mutualFriendCount === 1 ? '' : 's'}
+              </span>
             )}
           </div>
           {(player.statusPreset || (isLfg && !player.statusPreset)) && (

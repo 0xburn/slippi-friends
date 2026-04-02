@@ -45,7 +45,7 @@ export function Dashboard() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [identity, setIdentity] = useState<IdentityData | null>(null);
   const [user, setUser] = useState<UserData | null>(null);
-  const [status, setStatus] = useState<'online' | 'in-game' | 'offline'>('offline');
+  const [status, setStatus] = useState<'online' | 'in-game' | 'offline' | 'idle'>('offline');
   const [opponentCode, setOpponentCode] = useState<string | null>(null);
   const [playingSince, setPlayingSince] = useState<string | null>(null);
   const [characterId, setCharacterId] = useState<number | null>(null);
@@ -61,11 +61,15 @@ export function Dashboard() {
     window.api.getPrivacy().then((p) => setHideAvatar(p.hideAvatar)).catch(() => {});
 
     window.api.getLocalStatus().then((s: any) => {
-      if (s) setStatus(s === 'in-game' ? 'in-game' : s === 'online' ? 'online' : 'offline');
+      if (s && typeof s === 'object' && s.displayStatus) {
+        setStatus(s.displayStatus);
+      } else if (typeof s === 'string') {
+        setStatus(s === 'in-game' ? 'in-game' : s === 'online' ? 'online' : 'offline');
+      }
     });
 
     const unsub = window.api.onLocalStatus((info: any) => {
-      setStatus(info.status || 'online');
+      setStatus(info.displayStatus || info.status || 'online');
       setOpponentCode(info.opponentCode ?? null);
       setOpponentCharacterId(info.opponentCharacterId ?? null);
       setPlayingSince(info.playingSince ?? null);

@@ -10,7 +10,7 @@ import { registerIpcHandlers, sendToRenderer } from './ipc';
 import { showFriendOnlineNotification, showFriendRequestNotification, showNudgeNotification, showPlayInviteNotification } from './notifications';
 import { supabase } from './supabase';
 import {
-  getCurrentStatus, onGameActiveChange, pushOfflineAndStop, setGameThrottling, setLastOpponent, startPresenceLoop, stopPresenceLoop, updatePresenceReplayDir,
+  getCurrentStatus, onGameActiveChange, pushOfflineAndStop, setGameThrottling, setLastOpponent, setMainWindowFocused, startPresenceLoop, stopPresenceLoop, updatePresenceReplayDir,
 } from './presence';
 import { getSettings, isSetupComplete, updateSettings } from './settings';
 import {
@@ -189,6 +189,7 @@ async function pollAllNotifications(userId: string): Promise<void> {
     if (ms > 200) console.log(`[perf] pollAllNotifications took ${ms.toFixed(0)}ms`);
   } finally {
     pollInFlight = false;
+    updateTrayStatus();
   }
 }
 
@@ -377,7 +378,7 @@ async function startAgentServices(identity: SlippiIdentity, userId: string): Pro
       addRecentOpponent(info.connectCode, info.displayName);
       setLastOpponent(info.connectCode, info.characterId);
       sendToRenderer('opponent:new', info);
-      updateTrayStatus(getCurrentStatus());
+      updateTrayStatus();
     } catch (e) { console.error('opponent callback', e); }
   });
   setGameThrottling(st.reduceBackgroundActivity);
@@ -412,7 +413,7 @@ async function refreshAgentState(): Promise<void> {
         console.warn(`[main] identity is stale (user.json uid ≠ Launcher activeId) — stopping services`);
         await stopAgentServices();
         sendToRenderer('identity:staleAccount', { connectCode: identity.connectCode });
-        updateTrayStatus(getCurrentStatus());
+        updateTrayStatus();
         return;
       }
 
@@ -427,7 +428,7 @@ async function refreshAgentState(): Promise<void> {
         console.warn(`[main] connect code ${identity.connectCode} is already claimed by another verified user`);
         await stopAgentServices();
         sendToRenderer('identity:codeClaimed', { connectCode: identity.connectCode });
-        updateTrayStatus(getCurrentStatus());
+        updateTrayStatus();
         return;
       }
 
@@ -464,7 +465,7 @@ async function refreshAgentState(): Promise<void> {
     } else {
       await stopAgentServices();
     }
-    updateTrayStatus(getCurrentStatus());
+    updateTrayStatus();
   } catch (e) { console.error('refreshAgentState', e); } finally { refreshLock = false; }
 }
 
@@ -535,6 +536,24 @@ app.whenReady().then(async () => {
     mainWindow = createMainWindow();
     registerIpcHandlers(mainWindow, { onLogout: stopAgentServices });
 
+    const syncFocusFromWindow = () => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        setMainWindowFocused(mainWindow.isFocused());
+        updateTrayStatus();
+      }
+    };
+    mainWindow.on('blur', () => {
+      setMainWindowFocused(false);
+      updateTrayStatus();
+    });
+    mainWindow.on('focus', () => {
+      setMainWindowFocused(true);
+      updateTrayStatus();
+    });
+    mainWindow.on('show', syncFocusFromWindow);
+    // macOS / Electron: blur can be flaky; poll actual focus so away state stays correct.
+    setInterval(syncFocusFromWindow, 2000);
+
     ipcMain.handle('agent:refresh', async () => {
       await refreshAgentState();
       return { ok: true };
@@ -562,7 +581,7 @@ app.whenReady().then(async () => {
       });
     }
 
-    createTray(getCurrentStatus, {
+    createTray({
       onShowWindow: () => { mainWindow?.show(); mainWindow?.focus(); },
       onQuit: () => { (app as any).isQuitting = true; app.quit(); },
     });
@@ -578,7 +597,7 @@ app.whenReady().then(async () => {
         const inGame = getCurrentStatus() === 'in-game';
         if (inGame && getSettings().reduceBackgroundActivity && now - lastTrayUpdate < 30_000) return;
         lastTrayUpdate = now;
-        updateTrayStatus(getCurrentStatus());
+        updateTrayStatus();
       } catch {}
     }, 5000);
   } catch (e) { console.error('app.whenReady', e); }

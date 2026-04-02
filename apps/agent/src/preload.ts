@@ -106,6 +106,7 @@ const api = {
 
   trackBannerClick: (banner: string) => ipcRenderer.invoke('banner:click', banner),
   testNotification: () => ipcRenderer.invoke('notifications:test'),
+  reportDocumentHidden: (hidden: boolean) => ipcRenderer.send('visibility:document', hidden),
 };
 
 export type ElectronAPI = typeof api;

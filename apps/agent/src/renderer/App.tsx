@@ -10,6 +10,16 @@ import { Discover } from './pages/Discover';
 import { Leaderboard } from './pages/Leaderboard';
 import { UpdateBanner } from './components/UpdateBanner';
 
+function DocumentVisibilityReporter() {
+  useEffect(() => {
+    const sync = () => { window.api.reportDocumentHidden(document.hidden); };
+    sync();
+    document.addEventListener('visibilitychange', sync);
+    return () => document.removeEventListener('visibilitychange', sync);
+  }, []);
+  return null;
+}
+
 type BootState =
   | { phase: 'loading' }
   | { phase: 'no-slippi' }
@@ -448,6 +458,7 @@ export function App() {
 
   return (
     <HashRouter>
+      <DocumentVisibilityReporter />
       <Routes>
         <Route element={<Navigation />}>
           <Route path="/" element={<Friends />} />

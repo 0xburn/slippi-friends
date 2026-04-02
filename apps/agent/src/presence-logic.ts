@@ -53,14 +53,19 @@ export function isPresenceStale(
 }
 
 export function resolvePresenceRow(
-  row: { status: string; current_character?: number | null; opponent_code?: string | null; playing_since?: string | null; looking_to_play?: boolean; looking_to_play_since?: string | null; status_preset?: string | null; connection_type?: string | null; updated_at: string },
+  row: { status: string; current_character?: number | null; opponent_code?: string | null; playing_since?: string | null; looking_to_play?: boolean; looking_to_play_since?: string | null; status_preset?: string | null; connection_type?: string | null; app_idle?: boolean | null; updated_at: string },
   staleThreshold: number,
   now: number = Date.now(),
 ): { status: string; currentCharacter: number | null; opponentCode: string | null; playingSince: string | null; lookingToPlay: boolean; statusPreset: string | null; connectionType: string | null } {
   const stale = isPresenceStale(row.updated_at, staleThreshold, now);
   const lfgActive = !stale && !!row.looking_to_play;
+  let displayStatus = stale ? 'offline' : row.status;
+  if (!stale && row.app_idle) {
+    if (row.status === 'online') displayStatus = 'idle';
+    else if (row.status === 'in-game' && !row.opponent_code) displayStatus = 'idle';
+  }
   return {
-    status: stale ? 'offline' : row.status,
+    status: displayStatus,
     currentCharacter: stale ? null : (row.current_character ?? null),
     opponentCode: stale ? null : (row.opponent_code ?? null),
     playingSince: stale ? null : (row.playing_since ?? null),
